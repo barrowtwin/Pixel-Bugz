@@ -50,7 +50,6 @@ public class Controller implements Initializable {
 	GraphicsContext backgroundGC, bugGC, directionGC, objectsGC, pheromoneGC;
 	BugManager bm;
 	CanvasManager cm;
-	ObjectsManager om;
 	AnimationTimer timer;
 	
 	
@@ -58,15 +57,15 @@ public class Controller implements Initializable {
 		redBgSlider = new Slider();
 		greenBgSlider = new Slider();
 		blueBgSlider = new Slider();
-		redBugSlider = new Slider(0,255,255);
+		redBugSlider = new Slider(0,255,200);
 		greenBugSlider = new Slider(0,255,255);
 		blueBugSlider = new Slider(0,255,255);
-		bgAlphaSlider = new Slider(0,1,0.25);
-		bugAlphaSlider = new Slider(0,1,0.25);
+		bgAlphaSlider = new Slider(0,1,0);
+		bugAlphaSlider = new Slider(0,1,1);
 		sizeSlider = new Slider(0,10,3);
-		speedSlider = new Slider(0,3,1.5);
-		focusSlider = new Slider(0,100,20);
-		forceSlider = new Slider(0,2,1);
+		speedSlider = new Slider(0,1.5,0.5);
+		focusSlider = new Slider(0,2,0.5);
+		forceSlider = new Slider(0,2,1.5);
 		
 		text1 = new Text();
 		text2 = new Text();
@@ -79,11 +78,11 @@ public class Controller implements Initializable {
 		numBugsField = new TextField();
 		bugIndexField = new TextField();
 		
-		backgroundCanv = new Canvas(1512,812);
-		bugCanv = new Canvas(1512,812);
-		objectsCanv = new Canvas(1512,812);
-		pheromoneCanv = new Canvas(1512,812);
-		directionCanv = new Canvas(100,100);
+		backgroundCanv = new Canvas();
+		bugCanv = new Canvas();
+		objectsCanv = new Canvas();
+		pheromoneCanv = new Canvas();
+		directionCanv = new Canvas();
 		
 		createBugsButton = new Button();
 		followBugButton = new Button();
@@ -100,6 +99,18 @@ public class Controller implements Initializable {
 	
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
+		
+		backgroundCanv.setWidth(1512);
+		bugCanv.setWidth(1512);
+		objectsCanv.setWidth(1512);
+		pheromoneCanv.setWidth(1512);
+		directionCanv.setWidth(100);
+		
+		backgroundCanv.setHeight(812);
+		bugCanv.setHeight(812);
+		objectsCanv.setHeight(812);
+		pheromoneCanv.setHeight(812);
+		directionCanv.setHeight(100);
 		
 		redBg = (int)redBgSlider.getValue();
 		greenBg = (int)greenBgSlider.getValue();
@@ -120,9 +131,8 @@ public class Controller implements Initializable {
 		pheromoneGC = pheromoneCanv.getGraphicsContext2D();
 		
 		// Manager Creation
-		om = new ObjectsManager(200,200);
-		bm = new BugManager(om.getFood(), bugCanv.getWidth(), bugCanv.getHeight(), om.getHome());
-		cm = new CanvasManager(backgroundGC, bugGC, directionGC, objectsGC, pheromoneGC, bm.getBugs(), om.getFood(), bgPaint, bgAlpha, bm.getPM(), om.getHome());
+		bm = new BugManager(bugCanv.getWidth(), bugCanv.getHeight());
+		cm = new CanvasManager(backgroundGC, bugGC, directionGC, objectsGC, pheromoneGC, bgPaint, bgAlpha, bm);
 		cm.drawBackground();
 		cm.drawFood();
 		cm.drawHome();
@@ -318,34 +328,6 @@ public class Controller implements Initializable {
 				}
 			}
 		});
-		
-		//cm.drawPheromones();
-	}
-	
-	public void trackBug() {
-		if(!bm.getBugs().isEmpty()) {
-			bm.getBugs().get(trackedBug).setTracked(false);
-			trackedBug = Integer.parseInt(bugIndexField.getText());
-			trackBug = true;
-			bm.getBugs().get(trackedBug).setTracked(true);
-		}
-	}
-	
-	public void trackBugUpdate() {
-		cm.trackBug(trackedBug);
-		x.setText("X: " + (float)bm.getBugs().get(trackedBug).getX());
-		y.setText("Y: " + (float)bm.getBugs().get(trackedBug).getY());
-		
-//		System.out.println("exploring: " + bm.getBugs().get(trackedBug).isExploring() + 
-//				"\tcollecting: " + bm.getBugs().get(trackedBug).isCollecting() +
-//				"\treturning: " + bm.getBugs().get(trackedBug).isReturning());
-	}
-	
-	public void createBugs(ActionEvent e) {
-		numBugs = Integer.parseInt(numBugsField.getText());
-		bm.clearBugs();
-		bm.createBugs(numBugs, bugCanv.getWidth(), bugCanv.getHeight(), size, speed, bugPaint, bugAlpha);
-		cm.drawBugs();
 	}
 	
 	public void animate() {
@@ -399,7 +381,7 @@ public class Controller implements Initializable {
 	}
 	
 	public void objectsUpdate() {
-		om.updateFood();
+		bm.getOM().updateFood();
 		cm.drawFood();
 		cm.drawHome();
 	}
@@ -407,7 +389,30 @@ public class Controller implements Initializable {
 	public void bugUpdate() {
 		bm.updateBugs(latency);
 		cm.drawBugs();
-		cm.drawPheromones();
+		//cm.drawPheromones();
+	}
+	
+	public void trackBug() {
+		if(!bm.getBugs().isEmpty()) {
+			bm.getBugs().get(trackedBug).setTracked(false);
+			trackedBug = Integer.parseInt(bugIndexField.getText());
+			trackBug = true;
+			bm.getBugs().get(trackedBug).setTracked(true);
+		}
+	}
+	
+	public void trackBugUpdate() {
+		cm.trackBug(trackedBug);
+		x.setText("X: " + (float)bm.getBugs().get(trackedBug).getX());
+		y.setText("Y: " + (float)bm.getBugs().get(trackedBug).getY());
+	}
+	
+	public void createBugs(ActionEvent e) {
+		numBugs = Integer.parseInt(numBugsField.getText());
+		bm.clearBugs();
+		bm.createBugs(numBugs, bugCanv.getWidth(), bugCanv.getHeight(), size, speed, bugPaint, bugAlpha);
+		cm.drawBugs();
+		cm.drawHome();
 	}
 	
 	public void close() {

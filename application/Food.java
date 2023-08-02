@@ -4,35 +4,37 @@ import java.util.UUID;
 
 import javafx.scene.shape.Circle;
 
-public class Food {
+public class Food extends Circle {
 	
 	private UUID id;
-	private Circle area;
 	private int count;
 	
 	public Food(double x, double y, int count) {
-		area = new Circle(x, y, count/10);
-		this.setCount(count);
+		setCenterX(x);
+		setCenterY(y);
+		setRadius(count/10);
+		this.count = count;
 		id = UUID.randomUUID();
 	}
 
 	public int getCount() {
 		return count;
 	}
+	
+	public void reduceCount() {
+		count -= 1;
+	}
 
 	public void setCount(int count) {
 		this.count = count;
 	}
-
-	public Circle getArea() {
-		return area;
+	
+	public void setFoodZone() {
+		if(count > 0)
+			setRadius(count/10);
 	}
 
-	public void setArea() {
-		area.setRadius(count/10);
-	}
-
-	public UUID getId() {
+	public UUID getUUID() {
 		return id;
 	}
 }

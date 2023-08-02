@@ -2,13 +2,14 @@ package application;
 
 public class FoodPheromone {
 	
-	private double duration;
 	private boolean active;
-	private double enterX, enterY;
+	private double enterX, enterY, width, height, duration;
 	
-	public FoodPheromone() {
-		duration = 20;
+	public FoodPheromone(double width, double height) {
+		duration = 30;
 		active = false;
+		this.width = width;
+		this.height = height;
 	}
 
 	public double getDuration() {
@@ -19,7 +20,7 @@ public class FoodPheromone {
 		this.duration = duration;
 		if(this.duration < 0) {
 			active = false;
-			this.duration = 20;
+			this.duration = 30;
 		}
 	}
 
@@ -44,6 +45,16 @@ public class FoodPheromone {
 	}
 
 	public void setActive(boolean active) {
+		if(active == true);
+			duration = 30;
 		this.active = active;
+	}
+
+	public double getWidth() {
+		return width;
+	}
+
+	public double getHeight() {
+		return height;
 	}
 }

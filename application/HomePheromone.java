@@ -3,11 +3,13 @@ package application;
 public class HomePheromone {
 	
 	private boolean active;
-	private double shortestTime, entranceX, entranceY;
+	private double shortestTime, entranceX, entranceY, width, height;
 	
-	public HomePheromone() {
+	public HomePheromone(double width, double height) {
 		active = false;
 		shortestTime = 0;
+		this.width = width;
+		this.height = height;
 	}
 
 	public boolean isActive() {
@@ -44,5 +46,13 @@ public class HomePheromone {
 		if(!active)
 			active = true;
 		this.entranceY = entranceY;
+	}
+
+	public double getWidth() {
+		return width;
+	}
+
+	public double getHeight() {
+		return height;
 	}
 }
