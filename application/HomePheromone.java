@@ -20,8 +20,16 @@ public class HomePheromone {
 		this.active = active;
 	}
 	
-	public void setShortestTime(double time) {
+	public synchronized void setShortestTime(double time) {
 		shortestTime = time;
+	}
+	
+	public synchronized boolean checkShortestTime(double time) {
+		if(shortestTime > time) {
+			shortestTime = time;
+			return true;
+		}
+		return false;
 	}
 	
 	public double getShortestTime() {

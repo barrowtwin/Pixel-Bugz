@@ -44,10 +44,10 @@ public class FoodPheromone {
 		return active;
 	}
 
-	public void setActive(boolean active) {
+	public void setActive(boolean status) {
 		if(active == true);
 			duration = 30;
-		this.active = active;
+		active = status;
 	}
 
 	public double getWidth() {

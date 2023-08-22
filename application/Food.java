@@ -1,12 +1,9 @@
 package application;
 
-import java.util.UUID;
-
 import javafx.scene.shape.Circle;
 
 public class Food extends Circle {
 	
-	private UUID id;
 	private int count;
 	
 	public Food(double x, double y, int count) {
@@ -14,7 +11,6 @@ public class Food extends Circle {
 		setCenterY(y);
 		setRadius(count/10);
 		this.count = count;
-		id = UUID.randomUUID();
 	}
 
 	public int getCount() {
@@ -30,11 +26,7 @@ public class Food extends Circle {
 	}
 	
 	public void setFoodZone() {
-		if(count > 0)
+		if(count > 40)
 			setRadius(count/10);
-	}
-
-	public UUID getUUID() {
-		return id;
 	}
 }

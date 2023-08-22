@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.BorderPane?>
+
+<BorderPane fx:id="mainView" prefHeight="1080.0" prefWidth="1920.0" style="-fx-background-color: #070707;" stylesheets="@../css/Styles.css" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="application.controllers.MainController">
+   <top>
+      <fx:include fx:id="top" prefHeight="60.0" prefWidth="1920.0" source="Top.fxml" BorderPane.alignment="CENTER" />
+   </top>
+   <left>
+      <fx:include fx:id="left" prefHeight="820.0" prefWidth="200.0" source="Left.fxml" BorderPane.alignment="CENTER" />
+   </left>
+   <center>
+      <fx:include fx:id="center" prefHeight="820.0" prefWidth="1520.0" source="Center.fxml" BorderPane.alignment="CENTER" />
+   </center>
+   <right>
+      <fx:include fx:id="right" prefHeight="820.0" prefWidth="200.0" source="Right.fxml" BorderPane.alignment="CENTER" />
+   </right>
+   <bottom>
+      <fx:include fx:id="bottom" prefHeight="200.0" prefWidth="1920.0" source="Bottom.fxml" BorderPane.alignment="CENTER" />
+   </bottom>
+</BorderPane>

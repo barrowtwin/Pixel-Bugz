@@ -14,7 +14,7 @@ public class Main extends Application {
 		
 		int windowWidth = 1920;
 		int windowHeight = 1080;
-		Parent root = FXMLLoader.load(getClass().getResource("Main.fxml"));
+		Parent root = FXMLLoader.load(getClass().getResource("fxml/MainView.fxml"));
 		Scene scene = new Scene(root);
 		scene.getStylesheets().add(getClass().getResource("Styles.css").toExternalForm());
 		primaryStage.setTitle("Pixelz");
