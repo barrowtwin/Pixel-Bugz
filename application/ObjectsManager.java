@@ -8,7 +8,7 @@ import javafx.geometry.Point2D;
 
 public class ObjectsManager {
 	
-	private final int FOOD_SPAWN_TIME = 150;
+	private final int FOOD_SPAWN_TIME = 30;
 	private List<Food> food;
 	private Random rand;
 	private double timer;
@@ -24,7 +24,7 @@ public class ObjectsManager {
 	
 	public void updateFood(double latency) {
 		timer += latency;
-		if(timer >= FOOD_SPAWN_TIME) {
+		if(timer >= FOOD_SPAWN_TIME && food.size() == 0) {
 			double x, y, distance;
 			do {
 				x = rand.nextDouble(-canvasWidth+50, canvasWidth-50);

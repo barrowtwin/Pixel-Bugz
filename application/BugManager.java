@@ -17,6 +17,8 @@ public class BugManager {
 	private final double SCOUT_COST = 100.0;
 	private final double GUARD_COST = 150.0;
 	private final double QUEEN_COST = 500.0;
+	private final double EXIT_COST = 500;
+	private final double REPAIR_COST = 100;
 	
 	private ObjectsManager om;
 	private PheromoneManager pm;
@@ -27,10 +29,10 @@ public class BugManager {
 	private List<Scout> scouts; 
 	private List<Guard> guards;
 	private List<Bug> bugzToRelease;
-	private int bugSize, queens, colonyExits, spawnerSelector, workerCounter, bugRed, bugGreen, bugBlue, scoutDeaths, guardDeaths, workerDeaths;
+	private int bugSize, queens, colonyExits, spawnerSelector, instantSpawnSelector, workerCounter, bugRed, bugGreen, bugBlue, scoutDeaths, guardDeaths, workerDeaths;
 	private double homeX, homeY, homeRadius, canvasWidth, canvasHeight, releaseTime, exitTimer, bugAlpha, bugSpeed, bugFocus, bugForce,
 		workerSpawnTimer, scoutSpawnTimer, guardSpawnTimer, queenSpawnTimer, exitCreationTimer, gridCellWidth, gridCellHeight, latency;
-	private boolean creatingExit;
+	private boolean creatingExit, repairing;
 	
 	public BugManager(double width, double height, ObjectsManager om, double homeX, double homeY, double homeRadius, SynchronizedTrackers trackers) {
 		workers = new ArrayList<>();
@@ -46,7 +48,7 @@ public class BugManager {
 		canvasHeight = height;
 		releaseTime = 0.2;
 		queens = 1;
-		colonyExits = 1;
+		colonyExits = 1000;
 		exitTimer = 0;
 		spawnerSelector = 0;
 		this.trackers = trackers;
@@ -68,22 +70,66 @@ public class BugManager {
 		pm.updatePheromones(latency);
 	}
 	
-	public void createBugz() {
-		// The controller sets the value of the spawnerSelector variable, telling this switch which method to call
-		switch(spawnerSelector) {
+	public void menuUpdate(double latency) {
+		this.latency = latency;
+		releaseBugz();
+		updateBugz();
+		pm.updatePheromones(latency);
+	}
+	
+	// Used for testing only
+	public void instantCreateBugz() {
+		// The controller sets the value of the instantSpawnSelector variable and calls this method to instantly create a bug
+		switch(instantSpawnSelector) {
 			case(0):
 				break;
 			case(1):
-				createWorker();
+				Worker worker = new Worker(canvasWidth, canvasHeight, om.getFood(), enemies, homeX, homeY, homeRadius, trackers);
+				workers.add(worker);
+				worker.setRed(bugRed);
+				worker.setGreen(bugGreen);
+				worker.setBlue(bugBlue);
+				worker.setAlpha(bugAlpha);
+				worker.setSpeed(bugSpeed);
+				worker.setSize(bugSize);
+				worker.setFocus(bugFocus);
+				worker.setForce(bugForce);
+				worker.setEnergy();
+				worker.setX(homeX);
+				worker.setY(homeY);
 				break;
 			case(2):
-				createScout();
+				Scout scout = new Scout(canvasWidth, canvasHeight, om.getFood(), enemies, homeX, homeY, homeRadius, trackers);
+				scouts.add(scout);
+				scout.setRed(bugRed);
+				scout.setGreen(bugGreen);
+				scout.setBlue(bugBlue);
+				scout.setAlpha(bugAlpha);
+				scout.setSpeed(bugSpeed);
+				scout.setSize(bugSize);
+				scout.setFocus(bugFocus);
+				scout.setForce(bugForce);
+				scout.setEnergy();
+				scout.setX(homeX);
+				scout.setY(homeY);
 				break;
 			case(3):
-				createGuard();
+				Guard guard = new Guard(canvasWidth, canvasHeight, om.getFood(), enemies, homeX, homeY, homeRadius, trackers);
+				guards.add(guard);
+				guard.setRed(bugRed);
+				guard.setGreen(bugGreen);
+				guard.setBlue(bugBlue);
+				guard.setAlpha(bugAlpha);
+				guard.setSpeed(bugSpeed);
+				guard.setSize(bugSize);
+				guard.setFocus(bugFocus);
+				guard.setForce(bugForce);
+				guard.setEnergy();
+				guard.setX(homeX);
+				guard.setY(homeY);
 				break;
 			case(4):
-				createQueen();
+				queens++;
 				break;
 			default:
 				break;
@@ -92,7 +138,7 @@ public class BugManager {
 	
 	// Called during creation of colony to give player starter bugz
 	public void createStarterBugz() {
-		for(int i = 0; i < 50; i++) {
+		for(int i = 0; i < 50000; i++) {
 			Worker bug = new Worker(canvasWidth, canvasHeight, om.getFood(), enemies, homeX, homeY, homeRadius, trackers);
 			workers.add(bug);
 			bug.setRed(bugRed);
@@ -106,6 +152,45 @@ public class BugManager {
 			bug.setEnergy();
 			bug.setX(homeX);
 			bug.setY(homeY);
+		}
+	}
+	
+	public void createMenuBugz() {
+		for(int i = 0; i < 100; i++) {
+			Worker bug = new Worker(canvasWidth, canvasHeight, om.getFood(), enemies, homeX, homeY, homeRadius, trackers);
+			workers.add(bug);
+			bug.setRed(bugRed);
+			bug.setGreen(bugGreen);
+			bug.setBlue(bugBlue);
+			bug.setAlpha(bugAlpha);
+			bug.setSpeed(bugSpeed);
+			bug.setSize(bugSize);
+			bug.setFocus(bugFocus);
+			bug.setForce(bugForce);
+			bug.setEnergy();
+			bug.setX(homeX);
+			bug.setY(homeY);
+		}
+	}
+	
+	public void createBugz() {
+		switch(spawnerSelector) {
+		case(0):
+			break;
+		case(1):
+			createWorker();
+			break;
+		case(2):
+			createScout();
+			break;
+		case(3):
+			createGuard();
+			break;
+		case(4):
+			createQueen();
+			break;
+		default:
+			break;
 		}
 	}
 	
@@ -225,6 +310,7 @@ public class BugManager {
 				double newY = bug.getY() + homeRadius * Math.sin(angle);
 				bug.setX(newX);
 				bug.setY(newY);
+				bug.acquireTarget();
 				trackers.decreaseBugzInHome();
 				bug.setIsHome(false);
 				bug.setQueueRelease(false);
@@ -366,7 +452,6 @@ public class BugManager {
 	
 	// Checks and updates grid information for given bug
 	public void updateGridLocations(Bug bug) {
-		int direction;
 		int bugXCell = (int)(bug.getX() / gridCellWidth);
 		int bugYCell = (int)(bug.getY() / gridCellHeight);
 		boolean changedCell = false;
@@ -378,20 +463,8 @@ public class BugManager {
 		if(bugXCell == bug.getGridIndexX()) {
 			// do nothing
 		}
-		else if(bugXCell < bug.getGridIndexX()) {
-			direction = 0;
+		else {
 			bug.setGridIndexX(bugXCell);
-			bug.setFPheromone(pm.getFPheromone()[bugXCell][bugYCell]);
-			bug.setHPheromone(pm.getHPheromone()[bugXCell][bugYCell]);
-			checkEntranceTime(bug, bugXCell, bugYCell, direction);
-			changedCell = true;
-		}
-		else if(bugXCell > bug.getGridIndexX()) {
-			direction = 1;
-			bug.setGridIndexX(bugXCell);
-			bug.setFPheromone(pm.getFPheromone()[bugXCell][bugYCell]);
-			bug.setHPheromone(pm.getHPheromone()[bugXCell][bugYCell]);
-			checkEntranceTime(bug, bugXCell, bugYCell, direction);
 			changedCell = true;
 		}
 		
@@ -403,74 +476,39 @@ public class BugManager {
 		if(bugYCell == bug.getGridIndexY()) {
 			// do nothing
 		}
-		else if(bugYCell < bug.getGridIndexY()) {
-			direction = 2;
+		else {
 			bug.setGridIndexY(bugYCell);
-			bug.setFPheromone(pm.getFPheromone()[bugXCell][bugYCell]);
-			bug.setHPheromone(pm.getHPheromone()[bugXCell][bugYCell]);
-			checkEntranceTime(bug, bugXCell, bugYCell, direction);
-			changedCell = true;
-		}
-		else if(bugYCell > bug.getGridIndexY()) {
-			direction = 3;
-			bug.setGridIndexY(bugYCell);
-			bug.setFPheromone(pm.getFPheromone()[bugXCell][bugYCell]);
-			bug.setHPheromone(pm.getHPheromone()[bugXCell][bugYCell]);
-			checkEntranceTime(bug, bugXCell, bugYCell, direction);
 			changedCell = true;
 		}
 		
 		if(changedCell) {
+			bug.setFPheromone(pm.getFPheromone()[bugXCell][bugYCell]);
+			bug.setHPheromone(pm.getHPheromone()[bugXCell][bugYCell]);
+			checkEntranceTime(bug, bugXCell, bugYCell);
 			if(bug.hasFood()) {
 				FoodPheromone phero = bug.getFPheromone();
 				phero.setActive(true);
-				phero.setEnterX(bug.getX() - bug.getVelocityX());
-				phero.setEnterY(bug.getY() - bug.getVelocityY());
+				phero.setEnterX(bug.getX() - bug.getFinalVelocityX());
+				phero.setEnterY(bug.getY() - bug.getFinalVelocityY());
 			}
 		}
 	}
 	
 	// Checks to see if the given bug has reach the grid cell in the shortest amount of time since leaving home
 	// If yes, then updates home pheromone. Which is used by the bug for returning home using the best known route back.
-	public void checkEntranceTime(Bug bug, int bugXCell, int bugYCell, int direction) {
+	public void checkEntranceTime(Bug bug, int bugXCell, int bugYCell) {
 		HomePheromone phero = bug.getHPheromone();
 		if(!phero.isActive()) {
 			phero.setActive(true);
 			phero.setShortestTime(bug.getTimeAway());
-			phero.setEntranceX(bug.getX() - bug.getVelocityX());
-			phero.setEntranceY(bug.getY() - bug.getVelocityY());
+			phero.setEntranceX(bug.getX() - bug.getFinalVelocityX());
+			phero.setEntranceY(bug.getY() - bug.getFinalVelocityY());
 		} 
 		// if it passes this test, it also needs to make sure that the previous grid cell's entranceXY is not on the same cell wall
 		// otherwise it will create a loop for any bug in "return home" state entering that grid cell
 		else if(phero.checkShortestTime(bug.getTimeAway())) {
-			switch(direction) {
-				case(0):
-					if((int)bug.getX() != (int)pm.getHPheromone()[bugXCell+1][bugYCell].getEntranceX()) {
-						phero.setEntranceX(bug.getX() - bug.getVelocityX());
-						phero.setEntranceY(bug.getY() - bug.getVelocityY());
-					}
-					break;
-				case(1):
-					if((int)bug.getX() != (int)pm.getHPheromone()[bugXCell-1][bugYCell].getEntranceX()) {
-						phero.setEntranceX(bug.getX() - bug.getVelocityX());
-						phero.setEntranceY(bug.getY() - bug.getVelocityY());
-					}
-					break;
-				case(2):
-					if((int)bug.getY() != (int)pm.getHPheromone()[bugXCell][bugYCell+1].getEntranceY()) {
-						phero.setEntranceX(bug.getX() - bug.getVelocityX());
-						phero.setEntranceY(bug.getY() - bug.getVelocityY());
-					}
-					break;
-				case(3):
-					if((int)bug.getY() != (int)pm.getHPheromone()[bugXCell][bugYCell-1].getEntranceY()) {
-						phero.setEntranceX(bug.getX() - bug.getVelocityX());
-						phero.setEntranceY(bug.getY() - bug.getVelocityY());
-					}
-					break;
-				default:
-					break;
-			}
+			phero.setEntranceX(bug.getX() - bug.getFinalVelocityX());
+			phero.setEntranceY(bug.getY() - bug.getFinalVelocityY());
 		}
 	}
 	
@@ -690,6 +728,14 @@ public class BugManager {
 		return QUEEN_COST;
 	}
 	
+	public double getExitCost() {
+		return EXIT_COST;
+	}
+	
+	public double getRepairCost() {
+		return REPAIR_COST;
+	}
+	
 	public void setSpawnerSelector(int value) {
 		spawnerSelector = value;
 	}
@@ -754,11 +800,23 @@ public class BugManager {
 		this.creatingExit = creatingExit;
 	}
 	
+	public boolean isRepairing() {
+		return repairing;
+	}
+
+	public void setRepairing(boolean status) {
+		repairing = status;
+	}
+	
 	public double getExitCreationTimer() {
 		return exitCreationTimer;
 	}
 	
 	public double getExitCreationTime() {
 		return EXIT_CREATION_TIME;
+	}
+	
+	public void setInstantSpawnSelector(int value) {
+		instantSpawnSelector = value;
 	}
 }

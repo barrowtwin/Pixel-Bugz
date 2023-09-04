@@ -1,23 +1,65 @@
 package application;
 
-import javafx.scene.shape.Circle;
-
-public class Colony extends Circle {
+public class Colony {
 	
 	SynchronizedTrackers trackers;
 	private BugManager bm;
+	private ObjectsManager om;
+	private EnemyManager em;
+	private CanvasManager cm;
+	private double x, y, radius;
 	
-	// creation of a colony only requires the width and height of the canvas they are placed on
-	public Colony(double width, double height, ObjectsManager om) {
-		setCenterX(width/2);
-		setCenterY(height/2);
-		setRadius(35);
+	public Colony(double width, double height, double homeRadius) {
+		x = width/2;
+		y = height/2;
+		radius = homeRadius;
 		trackers = new SynchronizedTrackers();
-		bm = new BugManager(width, height, om, getCenterX(), getCenterY(), getRadius(), trackers);
+		om = new ObjectsManager(width, height);
+		bm = new BugManager(width, height, om, x, y, radius, trackers);
+		em = new EnemyManager(x, y, radius, width, height, bm.getScouts(), bm.getGuards(), trackers);
+		cm = new CanvasManager(this);
+		bm.setEnemies(em.getEnemies());
 	}
 	
 	public void update(double latency) {
 		bm.update(latency);
+		om.updateFood(latency);
+		em.updateEnemies(latency);
+		cm.draw();
+	}
+	
+	public void menuUpdate(double latency) {
+		bm.menuUpdate(latency);
+		em.menuUpdateEnemies(latency);
+		cm.menuDraw();
+	}
+	
+	public void setupMenuColony() {
+		bm.setBugSpeed(50);
+		bm.setBugSize(3);
+		bm.setBugFocus(0.1);
+		bm.setBugForce(2);
+		bm.createMenuBugz();
+	}
+	
+	public void setupGameColony() {
+		bm.setBugSpeed(50);
+		bm.setBugSize(3);
+		bm.setBugFocus(0.1);
+		bm.setBugForce(2);
+		bm.createStarterBugz();
+	}
+	
+	public double getX() {
+		return x;
+	}
+	
+	public double getY() {
+		return y;
+	}
+	
+	public double getRadius() {
+		return radius;
 	}
 
 	public SynchronizedTrackers getTrackers() {
@@ -26,5 +68,17 @@ public class Colony extends Circle {
 
 	public BugManager getBm() {
 		return bm;
+	}
+
+	public ObjectsManager getOm() {
+		return om;
+	}
+
+	public CanvasManager getCm() {
+		return cm;
+	}
+
+	public EnemyManager getEm() {
+		return em;
 	}
 }

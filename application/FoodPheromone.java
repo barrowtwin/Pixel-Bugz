@@ -45,9 +45,10 @@ public class FoodPheromone {
 	}
 
 	public void setActive(boolean status) {
-		if(active == true);
-			duration = 30;
 		active = status;
+		if(active == true) {
+			duration = 30;
+		}
 	}
 
 	public double getWidth() {

@@ -19,16 +19,10 @@ public abstract class Bug {
 	private int gridIndexX, gridIndexY, red, green, blue, health, attackStage, deathPhase, experience, level, levelsPending;
 	private boolean inHome, queueRelease, fullEnergy, hasFood, dead, attacking;
 	private double x, y, boundsX, boundsY, focus, force, alpha, homeX, homeY, homeRadius, latency, timeAway, energy, directionX, directionY,
-	velocityX, velocityY, targetX, targetY;
+	velocityX, velocityY, finalVelocityX, finalVelocityY, targetX, targetY;
 	
 	public Bug(double boundX, double boundY, List<Food> food, List<Enemy> enemies, double homeX, double homeY, double homeRadius, SynchronizedTrackers trackers) {
-		targetX = 0;
-		targetY = 0;
-		directionX = 0;
-		directionY = 0;
-		velocityX = 0;
-		velocityY = 0;
-		energy = 0;
+		timeAway = 0;
 		deathPhase = 3;
 		rand = new Random();
 		boundsX = boundX;
@@ -39,7 +33,6 @@ public abstract class Bug {
 		this.homeRadius = homeRadius;
 		this.food = food;
 		this.enemies = enemies;
-		timeAway = 0;
 		fullEnergy = true;
 		hasFood = false;
 		inHome = true;
@@ -49,24 +42,23 @@ public abstract class Bug {
 		createBloodSplatter();
 	}
 	
-	
 	public void updateBug(double latency) {
 		this.latency = latency;
 		if(dead) {
-			alpha -= 0.001;
+			alpha -= latency/5;
 		}
 		// If not in home, update time away from home, decrease energy, find a target, then move to or attack that target
 		else if(!inHome) {
 			timeAway += latency;
 			if(energy > 0)
 				energy -= latency;
-			acquireTarget();
 			if(attacking) {
 				attack();
 			}
 			else {
 				move();
 			}
+			acquireTarget();
 		}
 		// If bug is home increase energy over time and, if full energy, queue for release from home
 		else {
@@ -85,42 +77,63 @@ public abstract class Bug {
 	// Each bug may or may not have to implement this method
 	public abstract void attack();
 	
-	public void move() {
-		double tempMag;
-		double desiredVelocityX = directionX * getSpeed();
-		double desiredVelocityY = directionY * getSpeed();
-		double desiredForceX = (desiredVelocityX - velocityX) * force;
-		double desiredForceY = (desiredVelocityY - velocityY) * force;
-		Point2D speedTest = new Point2D(desiredForceX,desiredForceY);
-		tempMag = speedTest.magnitude();
-		double accelerationX, accelerationY;
-		if(tempMag > force) {
-			tempMag = force/tempMag;
-			accelerationX = (speedTest.getX() * tempMag);
-			accelerationY = (speedTest.getY() * tempMag);
-		}
-		else {
-			accelerationX = speedTest.getX();
-			accelerationY = speedTest.getY();
-		}
-		double elapsedTime = latency;
-		double tempVelocityX = velocityX + (accelerationX * elapsedTime);
-		double tempVelocityY = velocityY + (accelerationY * elapsedTime);
-		Point2D velocityTest = new Point2D(tempVelocityX,tempVelocityY);
-		tempMag = velocityTest.magnitude();
-		if(tempMag > getSpeed()) {
-			tempMag = getSpeed()/tempMag;
-			velocityX = (velocityTest.getX() * tempMag);
-			velocityY = (velocityTest.getY() * tempMag);
-		}
-		else {
-			velocityX = velocityTest.getX();
-			velocityY = velocityTest.getY();
-		}
-		
-		double destinationX = x + velocityX;
-		double destinationY = y + velocityY;
+	private void move() {
+		double deltaX = directionX - velocityX;
+		double deltaY = directionY - velocityY;
+		velocityX += deltaX * focus;
+		velocityY += deltaY * focus;
+		normalizeVelocity();
+		finalVelocityX = velocityX * latency;
+		finalVelocityY = velocityY * latency;
+		double destinationX = x + finalVelocityX;
+		double destinationY = y + finalVelocityY;
 		checkBounds(destinationX, destinationY);
+	}
+	
+	private void checkBounds(double destinationX, double destinationY) {
+		if(destinationX < 0 || destinationX > boundsX) {
+			velocityX = 0;
+		}
+		else {
+			x = destinationX;
+		}
+		if(destinationY < 0 || destinationY > boundsY) {
+			velocityY = 0;
+		}
+		else {
+			y = destinationY;
+		}
+	}
+	
+	public void createDirection() {
+		directionX = targetX - x;
+		directionY = targetY - y;
+		normalizeDirection();
+		double nudgeX = (velocityX - directionX) / getForce();
+		double nudgeY = (velocityY - directionY) / getForce();
+		directionX += nudgeX;
+		directionY += nudgeY;
+	}
+	
+	private void normalizeVelocity() {
+		double magnitude = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+		if(magnitude > getSpeed()) {
+			velocityX = (velocityX / magnitude) * getSpeed();
+			velocityY = (velocityY / magnitude) * getSpeed();
+		}
+	}
+	
+	private void normalizeDirection() {
+		double magnitude = Math.sqrt(directionX * directionX + directionY * directionY);
+		if(magnitude > getSpeed()) {
+			directionX = (directionX / magnitude) * getSpeed();
+			directionY = (directionY / magnitude) * getSpeed();
+		}
+		else {
+			double scaleFactor = getSpeed() / magnitude;
+			directionX *= scaleFactor;
+			directionY *= scaleFactor;
+		}
 	}
 	
 	public void senseHome() {
@@ -155,33 +168,7 @@ public abstract class Bug {
 		}
 	}
 	
-	public void checkBounds(double destinationX, double destinationY) {
-		if(destinationX > 0 && destinationX < boundsX) {
-			x = destinationX;
-		}
-		else {
-			directionX *= -1;
-			velocityX = 0;
-		}
-		if(destinationY > 0 && destinationY < boundsY) {
-			y = destinationY;
-		}
-		else {
-			directionY *= -1;
-			velocityY = 0;
-		}
-	}
-	
-	public void normalizeTarget() {
-		directionX = targetX - x;
-		directionY = targetY - y;
-		Point2D direction = new Point2D(directionX, directionY);
-		Point2D normalizedDirection = direction.normalize();
-		directionX = normalizedDirection.getX();
-		directionY = normalizedDirection.getY();
-	}
-	
-	public void createBloodSplatter() {
+	private void createBloodSplatter() {
 		for(int i = 0; i < 2; i++) {
 			for(int j = 12, width = 1; j >= 1; j--, width++) {
 				double x = rand.nextGaussian(0, Math.sqrt(j*j));
@@ -384,6 +371,14 @@ public abstract class Bug {
 		this.velocityY = velocityY;
 	}
 	
+	public double getFinalVelocityX() {
+		return finalVelocityX;
+	}
+	
+	public double getFinalVelocityY() {
+		return finalVelocityY;
+	}
+	
 	public double getEnergy() {
 		return energy;
 	}
@@ -418,6 +413,10 @@ public abstract class Bug {
 	
 	public void setEnergy() {
 		energy = getMaxEnergy();
+	}
+	
+	public void setEnergy(double value) {
+		energy = value;
 	}
 	
 	public boolean isDead() {

@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import javafx.geometry.Point2D;
-
 public abstract class Enemy {
 	
 	private List<Scout> scouts;
@@ -54,9 +52,6 @@ public abstract class Enemy {
 			fling();
 			return;
 		}
-		else {
-			acquireTarget();
-		}
 		if(attackingBug) {
 			attackBug();
 		}
@@ -66,61 +61,56 @@ public abstract class Enemy {
 		else {
 			move();
 		}
+		acquireTarget();
 	}
 	
 	// Each enemy will have its own way of aquiring a target
 	public abstract void acquireTarget();
 	
 	public void move() {
-		double tempMag;
-		double desiredVelocityX = directionX * getSpeed();
-		double desiredVelocityY = directionY * getSpeed();
-		double desiredForceX = (desiredVelocityX - velocityX) * force;
-		double desiredForceY = (desiredVelocityY - velocityY) * force;
-		Point2D speedTest = new Point2D(desiredForceX,desiredForceY);
-		tempMag = speedTest.magnitude();
-		double accelerationX, accelerationY;
-		if(tempMag > force) {
-			tempMag = force/tempMag;
-			accelerationX = (speedTest.getX() * tempMag);
-			accelerationY = (speedTest.getY() * tempMag);
-		}
-		else {
-			accelerationX = speedTest.getX();
-			accelerationY = speedTest.getY();
-		}
-		double elapsedTime = latency;
-		double tempVelocityX = velocityX + (accelerationX * elapsedTime);
-		double tempVelocityY = velocityY + (accelerationY * elapsedTime);
-		Point2D velocityTest = new Point2D(tempVelocityX,tempVelocityY);
-		tempMag = velocityTest.magnitude();
-		if(tempMag > getSpeed()) {
-			tempMag = getSpeed()/tempMag;
-			velocityX = (velocityTest.getX() * tempMag);
-			velocityY = (velocityTest.getY() * tempMag);
-		}
-		else {
-			velocityX = velocityTest.getX();
-			velocityY = velocityTest.getY();
-		}
-		// No need to check an enemy's bounds
-		x += velocityX;
-		y += velocityY;
+		double deltaX = directionX - velocityX;
+		double deltaY = directionY - velocityY;
+		velocityX += deltaX * focus;
+		velocityY += deltaY * focus;
+		normalizeVelocity();
+		x += velocityX * latency;
+		y += velocityY * latency;
 	}
 	
+	private void normalizeVelocity() {
+		double magnitude = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+		if(magnitude > getSpeed()) {
+			velocityX = (velocityX / magnitude) * getSpeed();
+			velocityY = (velocityY / magnitude) * getSpeed();
+		}
+	}
+	
+	private void normalizeDirection() {
+		double magnitude = Math.sqrt(directionX * directionX + directionY * directionY);
+		if(magnitude > getSpeed()) {
+			directionX = (directionX / magnitude) * getSpeed();
+			directionY = (directionY / magnitude) * getSpeed();
+		}
+		else {
+			double scaleFactor = getSpeed() / magnitude;
+			directionX *= scaleFactor;
+			directionY *= scaleFactor;
+		}
+	}
+	
+	public void createDirection() {
+		directionX = targetX - x;
+		directionY = targetY - y;
+		normalizeDirection();
+		double nudgeX = (velocityX - directionX) / getForce();
+		double nudgeY = (velocityY - directionY) / getForce();
+		directionX += nudgeX;
+		directionY += nudgeY;
+	}
 	
 	public abstract boolean senseBug();
 	public abstract void attackBug();
 	public abstract void attackBugHome();
-	
-	public void normalizeTarget() {
-		directionX = targetX - x;
-		directionY = targetY - y;
-		Point2D direction = new Point2D(directionX, directionY);
-		Point2D normalizedDirection = direction.normalize();
-		directionX = normalizedDirection.getX();
-		directionY = normalizedDirection.getY();
-	}
 	
 	public void fling() {
 		if(flingTimer >= 0) {
@@ -356,16 +346,17 @@ public abstract class Enemy {
 
 	public void setThrown(boolean thrown, double velocityX, double velocityY) {
 		this.thrown = thrown;
-		thrownVelocityX = velocityX * 1.2;
-		thrownVelocityY = velocityY * 1.2;
+		thrownVelocityX = velocityX * 0.8;
+		thrownVelocityY = velocityY * 0.8;
 	}
 
 	public boolean isDead() {
 		return dead;
 	}
 
-	public void setDead(boolean dead) {
-		this.dead = dead;
+	public void setDead() {
+		dead = true;
+		setDeathCoordinates();
 	}
 
 	public Bug getTargetBug() {
@@ -404,6 +395,7 @@ public abstract class Enemy {
 	public void setDeathCoordinates() {
 		double tempX = 0;
 		double tempY = 0;
+		// make sure the blood splatter is at the edge of the canvas on x axis
 		if(x < 0)
 			tempX = 0;
 		else if(x > boundsX)
@@ -480,5 +472,21 @@ public abstract class Enemy {
 	
 	public int areLevelsPending() {
 		return levelsPending;
+	}
+	
+	public double getDirectionX() {
+		return directionX;
+	}
+	
+	public void setDirectionX(double direction) {
+		directionX = direction;
+	}
+	
+	public double getDirectionY() {
+		return directionY;
+	}
+	
+	public void setDirectionY(double direction) {
+		directionY = direction;
 	}
 }

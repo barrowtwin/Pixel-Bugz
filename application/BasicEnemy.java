@@ -28,7 +28,7 @@ public class BasicEnemy extends Enemy {
 	@Override
 	public void acquireTarget() {
 		if(senseBug()) {
-			normalizeTarget();
+			createDirection();
 		}
 		else {
 			double enemyRadius = size/2;
@@ -44,7 +44,7 @@ public class BasicEnemy extends Enemy {
 				setAttackingBugHome(false);
 				setTargetX(getBugHomeX());
 				setTargetY(getBugHomeY());
-				normalizeTarget();
+				createDirection();
 			}
 		}
 	}
@@ -53,10 +53,10 @@ public class BasicEnemy extends Enemy {
 	public boolean senseBug() {
 		// Guards are first priority target for this enemy
 		List<Guard> guards = getGuards();
-		double shortestDistance = 0;
+		double shortestDistance = PERIMETER;
 		for(int i = 0; i < guards.size(); i++) {
 			Bug guard = guards.get(i);
-			if(guard.isDead()) {
+			if(guard.isDead() || guard.isHome()) {
 				continue;
 			}
 			double test = new Point2D(getX(), getY()).distance(guard.getX(), guard.getY());
@@ -69,6 +69,7 @@ public class BasicEnemy extends Enemy {
 					sensedBug = true;
 				}
 				else {
+					sensedBug = true;
 					if(test < shortestDistance) {
 						setTargetX(guard.getX());
 						setTargetY(guard.getY());
@@ -94,7 +95,7 @@ public class BasicEnemy extends Enemy {
 		List<Scout> scouts = getScouts();
 		for(int i = 0; i < scouts.size(); i++) {
 			Bug scout = scouts.get(i);
-			if(scout.isDead()) {
+			if(scout.isDead() || scout.isHome()) {
 				continue;
 			}
 			double test = new Point2D(getX(), getY()).distance(scout.getX(), scout.getY());
@@ -107,6 +108,7 @@ public class BasicEnemy extends Enemy {
 					sensedBug = true;
 				}
 				else {
+					sensedBug = true;
 					if(test < shortestDistance) {
 						setTargetX(scout.getX());
 						setTargetY(scout.getY());

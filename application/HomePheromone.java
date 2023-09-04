@@ -41,8 +41,6 @@ public class HomePheromone {
 	}
 
 	public void setEntranceX(double entranceX) {
-		if(!active)
-			active = true;
 		this.entranceX = entranceX;
 	}
 
@@ -51,8 +49,6 @@ public class HomePheromone {
 	}
 
 	public void setEntranceY(double entranceY) {
-		if(!active)
-			active = true;
 		this.entranceY = entranceY;
 	}
 

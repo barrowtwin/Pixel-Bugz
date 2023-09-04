@@ -1,56 +1,58 @@
 .button{
 	-fx-opacity: 0.75;
 	-fx-background-color: #333333;
-	-fx-color: white;
-	-fx-text-fill: white;
+	-fx-color: WHITE;
+	-fx-text-fill: BLACK;
 	-fx-border-radius: 0;
 	-fx-background-radius: 0;
+	-fx-padding: 0;
 }
 
 .button:hover{
 	-fx-opacity: 1;
 }
 
-#closeButton{
-	-fx-background-color: #171717;
-	-fx-opacity: 0.5;
-	
+.menu-buttons {
+	-fx-background-color: transparent;
 }
 
-#closeButton:hover{
+.game-buttons {
+	-fx-opacity: 0.7;
+	-fx-background-color: #000000;
+}
+
+.game-buttons:hover {
+	-fx-opacity: 0.8;
 	-fx-background-color: #333333;
 }
 
-#configButton{
-	-fx-background-color: #171717;
-	-fx-opacity: 0.5;
-}
-
-#configButton:hover{
-	-fx-background-color: #333333;
-}
-
-.label{
+.label {
 	-fx-opacity: 0.8;
 }
 
-.text{
+.hud-label {
+	-fx-opacity: 1.0;
+	-fx-stroke: black;
+	-fx-stroke-width: 2px;
+}
+
+.text {
 	-fx-opacity: 0.8;
 }
 
-.text-field{
+.text-field {
 	-fx-background-color: #777777;
 	-fx-background-radius: 0;
 }
 
-.slider .track{
+.slider .track {
 	-fx-background-color: #444444;
 	-fx-background-radius: 0;
 	-fx-pref-width: 10px;
 	-fx-pref-height: 10px;
 }
 
-.slider .thumb{
+.slider .thumb {
 	-fx-background-color: #777777;
 	-fx-background-radius: 0;
 	-fx-pref-width: 12px;
@@ -58,10 +60,40 @@
 }
 
 .progress-bar {
-	-fx-border-color: #333333;
-	-fx-border-width: 4px;
+	-fx-border-color: #000000;
+	-fx-border-width: 1px;
+	-fx-opacity: 0.25;
+	-fx-rotate: -90;
 }
 
 .progress-bar .bar {
-	-fx-accent: #333333;
+	-fx-accent: #444444;
+}
+
+.choice-box .context-menu { 
+	-fx-background-color: #171717;
+}
+
+.choice-box .menu-item:focused { 
+	-fx-background-color: #777777;
+}
+
+.choice-box .menu-item > .label { 
+	-fx-text-fill: white;
+	-fx-font-size: 16;
+}
+
+.choice-box .menu-item:focused > .label { 
+	-fx-text-fill: black;
+	-fx-font-size: 16;
+}
+
+.choice-box {
+	-fx-background-color: #171717;
+	-fx-mark-color: #777777;
+}
+
+.choice-box > .label { 
+	-fx-text-fill: white;
+	-fx-font-size: 16;
 }

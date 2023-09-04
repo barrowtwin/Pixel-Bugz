@@ -25,33 +25,29 @@ public class Worker extends Bug {
 			// set target to home or home trail
 			getFPheromone().setActive(true);
 			senseHome();
-			normalizeTarget();
+			createDirection();
 		}
 		else if(getEnergy() <= 0) {
 			// set target to home or home trail
 			senseHome();
-			normalizeTarget();
+			createDirection();
 		}
 		else if(senseFood()) {
 			// set target to food or food trail	
-			normalizeTarget();
+			createDirection();
 		}
 		else {
-			// set a random target to wander toward
-			double tempX, tempY;
-			while(true) {
-				tempX = getRandom().nextGaussian();
-				tempY = getRandom().nextGaussian();
-				if((tempX*tempX)+(tempY*tempY) < 1) {
-					break;
-				}
-			}
-			setDirectionX(getDirectionX() + (tempX * getFocus()));
-			setDirectionY(getDirectionY() + (tempY * getFocus()));
+			// set a random direction to move in
+			double randomDirectionX = getRandom().nextDouble() * (2 * maxSpeed) - maxSpeed;
+			double randomDirectionY = getRandom().nextDouble() * (2 * maxSpeed) - maxSpeed;
+			double nudgeX = (getVelocityX() - randomDirectionX) * getForce();
+			double nudgeY = (getVelocityY() - randomDirectionY) * getForce();
+			setDirectionX(randomDirectionX + nudgeX);
+			setDirectionY(randomDirectionY + nudgeY);
 		}
 	}
 	
-	public boolean senseFood() {
+	private boolean senseFood() {
 		List<Food> food = getFood();
 		for(int i = 0; i < food.size(); i++) {
 			Food foodZone = food.get(i);

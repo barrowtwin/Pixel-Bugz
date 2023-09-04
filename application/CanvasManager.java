@@ -2,9 +2,9 @@ package application;
 
 import java.util.List;
 import java.util.Random;
+
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.effect.BlendMode;
 import javafx.scene.effect.Light;
 import javafx.scene.effect.Lighting;
 import javafx.scene.paint.Color;
@@ -16,58 +16,72 @@ import javafx.scene.text.TextAlignment;
 
 public class CanvasManager {
 	
-	private GraphicsContext backgroundGC, bugGC, objectsGC, pheromoneGC;
+	private GraphicsContext backgroundGC, bugGC;
 	private Colony colony;
 	private BugManager bm;
 	private EnemyManager em;
 	private ObjectsManager om;
 	private double bgAlpha, canvasWidth, canvasHeight;
 	private int bgRed, bgGreen, bgBlue;
-	private boolean drawHPhero, drawFPhero, drawGrid;
+	private boolean drawHPhero, drawFPhero, drawGrid, fadeLightComplete;
 	private Random rand;
 	private Light.Point environmentLight;
 	private Lighting environmentLighting;
 	private Light.Point backLight;
 	private Lighting backLighting;
 
-	public CanvasManager(Colony colony, ObjectsManager om) {
+	public CanvasManager(Colony colony) {
 		this.colony = colony;
-		this.om = om;
+		om = colony.getOm();
 		bm = colony.getBm();
+		em = colony.getEm();
 		rand = new Random();
 		environmentLight = new Light.Point();
-		environmentLight.setX(colony.getCenterX());
-		environmentLight.setY(colony.getCenterY());
-		environmentLight.setZ(500);
+		environmentLight.setX(colony.getX());
+		environmentLight.setY(colony.getY());
+		environmentLight.setZ(300);
 		environmentLighting = new Lighting();
 		environmentLighting.setLight(environmentLight);
+		environmentLighting.setBumpInput(null);
 		backLight = new Light.Point();
-		backLight.setX(colony.getCenterX());
-		backLight.setY(colony.getCenterY());
-		backLight.setZ(25);
+		backLight.setX(colony.getX());
+		backLight.setY(colony.getY());
+		backLight.setZ(75);
 		backLighting = new Lighting();
 		backLighting.setLight(backLight);
+        backLighting.setBumpInput(null);
+		environmentLight.setColor(Color.WHITE);
+		backLight.setColor(Color.WHITE);
 	}
 	
 	// Called after the creation of the canvas manager by the main controller
-	public void generateGracphicsContexts(Canvas backgroundCanv, Canvas bugCanv, Canvas objectsCanv, Canvas pheromoneCanv) {
+	public void generateGracphicsContexts(Canvas backgroundCanv, Canvas bugCanv) {
 		canvasWidth = bugCanv.getWidth();
 		canvasHeight = bugCanv.getHeight();
 		backgroundGC = backgroundCanv.getGraphicsContext2D();
 		bugGC = bugCanv.getGraphicsContext2D();
-		objectsGC = objectsCanv.getGraphicsContext2D();
-		pheromoneGC = pheromoneCanv.getGraphicsContext2D();
 		bugGC.setTextAlign(TextAlignment.CENTER);
 		bugGC.setFont(Font.font("System", FontWeight.BOLD, 26));
 	}
 	
+	// Used to draw in the game view
 	public void draw() {
-		objectsGC.clearRect(0, 0, canvasWidth, canvasHeight);
 		bugGC.clearRect(0, 0, canvasWidth, canvasHeight);
+		drawBackground();
+		drawPheromones();
+		drawFood();
 		drawBugz();
 		drawEnemies();
-		drawFood();
-		drawPheromones();
+		drawColonyHealth();
+		lightPlayingField();
+	}
+	
+	// Used to draw in the main menu
+	public void menuDraw() {
+		bugGC.clearRect(0, 0, canvasWidth, canvasHeight);
+		drawBackground();
+		drawBugz();
+		drawEnemies();
 		lightPlayingField();
 	}
 	
@@ -75,8 +89,6 @@ public class CanvasManager {
 		backgroundGC.clearRect(0, 0, canvasWidth, canvasHeight);
 		backgroundGC.setFill(Color.rgb(bgRed, bgGreen, bgBlue, bgAlpha));
 		backgroundGC.fillRect(0, 0, canvasWidth, canvasHeight);
-		String color = String.format("rgba(%d, %d, %d, %f)", bgRed, bgGreen, bgBlue, bgAlpha);
-		backgroundGC.getCanvas().getParent().setStyle("-fx-background-color: " + color);
 	}
 	
 	public void drawBugz() {
@@ -86,10 +98,9 @@ public class CanvasManager {
 		double radius = colony.getRadius();
 		double colonyWidth = radius*2;
 		Color bugColor = Color.rgb((int)bm.getBugRed(), (int)bm.getBugGreen(), (int)bm.getBugBlue(), bm.getBugAlpha());
-		
 		// Draw the colony first
-		bugGC.setFill(bugColor);
-		bugGC.fillOval(colony.getCenterX()-radius, colony.getCenterY()-radius, colonyWidth, colonyWidth);
+		bugGC.setFill(Color.WHITE);
+		bugGC.fillOval(colony.getX()-radius, colony.getY()-radius, colonyWidth, colonyWidth);
 		
 		// Next draw the workers
 		for(int i = 0; i < workers.size(); i++) {
@@ -107,7 +118,7 @@ public class CanvasManager {
 				bugGC.fillOval(bugX-bugOffset, bugY-bugOffset, bugSize, bugSize);
 				if(bug.hasFood()) {
 					bugGC.setFill(Paint.valueOf("#ffff00"));
-					bugGC.fillOval(bugX-3, bugY-3, 3, 3);
+					bugGC.fillOval(bugX-bugSize, bugY-bugSize, bugSize*2, bugSize*2);
 				}
 			}
 		}
@@ -141,9 +152,6 @@ public class CanvasManager {
 				}
 				if(bug.getLevelsPending() > 0) {
 					applyLevelGlow(bug);
-//					System.out.println("made it in");
-//					bugGC.setFill(new RadialGradient(0,0.5,bugX,bugY,bugSize*3,false,CycleMethod.NO_CYCLE,new Stop(0.0, Color.WHITE),new Stop(0.8, Color.TRANSPARENT)));
-//					bugGC.fillOval(bugX-(bugSize*1.5), bugY-(bugSize*1.5), bugSize*3, bugSize*3);
 				}
 				bugGC.setFill(bugColor);
 				bugGC.fillPolygon(new double[] {x1,x2,x3}, new double[] {y1,y2,y3}, 3);
@@ -207,6 +215,7 @@ public class CanvasManager {
 						bugGC.setStroke(Color.RED);
 						bugGC.setLineWidth(4);
 						bugGC.strokeLine(enemyX, enemyY, bug.getX(), bug.getY());
+						
 					}
 				}
 				// if enemy is attacking bug home, draw attack animation before drawing enemy so that enemy is ontop of animation
@@ -214,7 +223,7 @@ public class CanvasManager {
 					if(enemy.getAttackStage() == enemy.getMaxAttackStages()) {
 						bugGC.setStroke(Color.RED);
 						bugGC.setLineWidth(4);
-						bugGC.strokeLine(enemyX, enemyY, colony.getCenterX(), colony.getCenterY());
+						bugGC.strokeLine(enemyX, enemyY, colony.getX(), colony.getY());
 					}
 				}
 				bugGC.fillOval(enemy.getX()-enemyOffset, enemy.getY()-enemyOffset, enemySize, enemySize);
@@ -231,11 +240,11 @@ public class CanvasManager {
 				bugGC.fillOval(enemy.getX()-enemyOffset, enemy.getY()-enemyOffset, enemySize, enemySize);
 			}
 		}
-		// Draw colony health last so it is readable and updated right after all enemy actions
-		backgroundGC.setGlobalBlendMode(BlendMode.MULTIPLY);
-		bugGC.setFill(Color.rgb(150,150,150,1.0));
-		bugGC.fillText(Integer.toString(colony.getTrackers().getColonyHealth()), colony.getCenterX(), colony.getCenterY()+7, colony.getRadius()*2);
-		backgroundGC.setGlobalBlendMode(BlendMode.SRC_OVER);
+	}
+	
+	public void drawColonyHealth() {
+		bugGC.setFill(Color.rgb(20,20,20,1.0));
+		bugGC.fillText(Integer.toString(colony.getTrackers().getColonyHealth()), colony.getX(), colony.getY()+7, colony.getRadius()*2);
 	}
 	
 	public void drawPheromones() {
@@ -243,7 +252,6 @@ public class CanvasManager {
 			PheromoneManager pm = colony.getBm().getPM();
 			FoodPheromone[][] fPheros = pm.getFPheromone();
 			HomePheromone[][] hPheros = pm.getHPheromone();
-			pheromoneGC.clearRect(0, 0, canvasWidth, canvasHeight);
 			double canvX = 0;
 			double canvY = 0;
 			double cellWidth = pm.getCellWidth();
@@ -253,23 +261,23 @@ public class CanvasManager {
 					boolean fPhero = fPheros[i][j].isActive();
 					boolean hPhero = hPheros[i][j].isActive();
 					if(drawGrid) {
-						pheromoneGC.setStroke(Paint.valueOf("#FFFFFF"));
-						pheromoneGC.strokeRect(canvX, canvY, cellWidth, cellHeight);
+						bugGC.setStroke(Paint.valueOf("#FFFFFF"));
+						bugGC.strokeRect(canvX, canvY, cellWidth, cellHeight);
 					}
 					if(fPhero && hPhero && drawHPhero && drawFPhero) {
-						pheromoneGC.setFill(Color.rgb(150, 0, 150));
-						pheromoneGC.fillRect(canvX, canvY, cellWidth, cellHeight);
+						bugGC.setFill(Color.rgb(150, 0, 150));
+						bugGC.fillRect(canvX, canvY, cellWidth, cellHeight);
 					}
 					else if(hPhero && drawHPhero) {
-						pheromoneGC.setFill(Color.rgb(0, 0, 150));
-						pheromoneGC.fillRect(canvX, canvY, cellWidth, cellHeight);
+						bugGC.setFill(Color.rgb(0, 0, 150));
+						bugGC.fillRect(canvX, canvY, cellWidth, cellHeight);
 					}
 					else if(fPhero && drawFPhero) {
-						pheromoneGC.setFill(Color.rgb(150, 0, 0));
-						pheromoneGC.fillRect(canvX, canvY, cellWidth, cellHeight);
+						bugGC.setFill(Color.rgb(150, 0, 0));
+						bugGC.fillRect(canvX, canvY, cellWidth, cellHeight);
 					}
 					else
-						pheromoneGC.setFill(Color.TRANSPARENT);
+						bugGC.setFill(Color.TRANSPARENT);
 					canvY += cellHeight;
 				}
 				canvX += cellWidth;
@@ -283,19 +291,15 @@ public class CanvasManager {
 		for(int i = 0; i < food.size(); i++) {
 			Circle foodZone = food.get(i);
 			double radius = foodZone.getRadius();
-			objectsGC.setFill(Paint.valueOf("#ffff00"));
-			objectsGC.fillOval(foodZone.getCenterX()-radius,foodZone.getCenterY()-radius,radius*2,radius*2);
-			objectsGC.setStroke(Paint.valueOf("#000000"));
-			objectsGC.strokeOval(foodZone.getCenterX()-radius,foodZone.getCenterY()-radius,radius*2,radius*2);
+			bugGC.setFill(Color.WHITE);
+			bugGC.fillOval(foodZone.getCenterX()-radius,foodZone.getCenterY()-radius,radius*2,radius*2);
+			bugGC.setStroke(Paint.valueOf("#000000"));
+			bugGC.strokeOval(foodZone.getCenterX()-radius,foodZone.getCenterY()-radius,radius*2,radius*2);
 		}
 	}
 	
 	public void lightPlayingField() {
-		Color lightColor = Color.rgb((int)bm.getBugRed(), (int)bm.getBugGreen(), (int)bm.getBugBlue(), bm.getBugAlpha());
-		environmentLight.setColor(Color.WHITE);
-		backLight.setColor(lightColor);
 		bugGC.applyEffect(environmentLighting);
-		objectsGC.applyEffect(environmentLighting);
 		backgroundGC.applyEffect(backLighting);
 	}
 	
@@ -322,11 +326,11 @@ public class CanvasManager {
 	private void drawBugDeath(Bug bug) {
 		int deathPhase = bug.getDeathPhase();
 		// create random circles around the area of death to simulate blood splatter
-		objectsGC.setFill(Color.rgb((int)bug.getRed(), (int)bug.getGreen(), (int)bug.getBlue(), bug.getAlpha()));
+		backgroundGC.setFill(Color.rgb((int)bug.getRed(), (int)bug.getGreen(), (int)bug.getBlue(), bug.getAlpha()));
 		List<BloodSplatter> bloodSplatter = bug.getBloodSplatters();
 		for(int i = 0; i < bloodSplatter.size()/deathPhase; i++) {
 			BloodSplatter bs = bloodSplatter.get(i);
-			objectsGC.fillOval(bs.getX(), bs.getY(), bs.getRadius(), bs.getRadius());
+			backgroundGC.fillOval(bs.getX(), bs.getY(), bs.getRadius(), bs.getRadius());
 		}
 		if(deathPhase > 1) {
 			bug.setDeathPhase(deathPhase - 1);
@@ -336,11 +340,11 @@ public class CanvasManager {
 	private void drawEnemyDeath(Enemy enemy) {
 		int deathPhase = enemy.getDeathPhase();
 		// create random circles around the area of death to simulate blood splatter
-		objectsGC.setFill(Color.rgb((int)enemy.getRed(), (int)enemy.getGreen(), (int)enemy.getBlue(), enemy.getAlpha()));
+		backgroundGC.setFill(Color.rgb((int)enemy.getRed(), (int)enemy.getGreen(), (int)enemy.getBlue(), enemy.getAlpha()));
 		List<BloodSplatter> bloodSplatter = enemy.getBloodSplatters();
 		for(int i = 0; i < bloodSplatter.size()/deathPhase; i++) {
 			BloodSplatter bs = bloodSplatter.get(i);
-			objectsGC.fillOval(bs.getX(), bs.getY(), bs.getRadius(), bs.getRadius());
+			backgroundGC.fillOval(bs.getX(), bs.getY(), bs.getRadius(), bs.getRadius());
 		}
 		if(deathPhase > 1) {
 			enemy.setDeathPhase(deathPhase - 1);
@@ -352,17 +356,20 @@ public class CanvasManager {
 	}
 	
 	public void killColony() {
-		backgroundGC.setGlobalBlendMode(BlendMode.SRC_OVER);
-		bugGC.setFill(Color.rgb((int)colony.getBm().getBugRed(), (int)colony.getBm().getBugGreen(), (int)colony.getBm().getBugBlue(), (int)colony.getBm().getBugAlpha()));
+		bugGC.setFill(Color.rgb((int)bm.getBugRed(), (int)bm.getBugGreen(), (int)bm.getBugBlue(), (int)bm.getBugAlpha()));
 		for(int j = (int)colony.getRadius(), width = 1; j >= 1; j--, width++) {
-			double x = rand.nextGaussian(colony.getCenterX(), Math.sqrt(j*j*j));
-			double y = rand.nextGaussian(colony.getCenterY(), Math.sqrt(j*j*j));
+			double x = rand.nextGaussian(colony.getX(), Math.sqrt(j*j*j));
+			double y = rand.nextGaussian(colony.getY(), Math.sqrt(j*j*j));
 			bugGC.fillOval(x, y, width, width);
 		}
 	}
 	
-	public void clearPheroDraws() {
-		pheromoneGC.clearRect(0, 0, canvasWidth, canvasHeight);
+	public void extinguishLight() {
+		backLight.setZ(backLight.getZ() - 1.0);
+		environmentLight.setZ(environmentLight.getZ() - 4.0);
+		if(backLight.getZ() <= 0 && environmentLight.getZ() <= 0) {
+			fadeLightComplete = true;
+		}
 	}
 	
 	public double getBgAlpha() {
@@ -431,5 +438,9 @@ public class CanvasManager {
 
 	public void setDrawGrid(boolean drawGrid) {
 		this.drawGrid = drawGrid;
+	}
+	
+	public boolean getFadeLightStatus() {
+		return fadeLightComplete;
 	}
 }

@@ -11,7 +11,7 @@ public class SynchronizedTrackers {
 		colonyHealth = 100;
 		bugzInHome = 0;
 		totalFoodCollected = 0;
-		currentFood = 1000.0;
+		currentFood = 500.0;
 	}
 	
 	public synchronized void decreaseColonyHealth(int damage) {

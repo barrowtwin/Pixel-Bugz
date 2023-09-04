@@ -6,17 +6,15 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
 
-import javafx.geometry.Point2D;
-
 public class EnemyManager {
 	
-	private final int ENEMY_SPAWN_TIME = 1;
+	private final int ENEMY_SPAWN_TIME = 2000;
 	
 	private List<Enemy> enemies;
 	private List<Scout> scouts;
 	private List<Guard> guards;
 	private double bugHomeX, bugHomeY, bugHomeRadius, canvasWidth, canvasHeight, enemyRed, enemyGreen, enemyBlue, enemyAlpha, enemySpeed, enemyFocus, enemyForce, enemySpawnTimer;
-	private int enemySize;
+	private int enemySize, menuEnemyCount;
 	private Random rand;
 	private SynchronizedTrackers trackers;
 	
@@ -35,17 +33,64 @@ public class EnemyManager {
 	}
 	
 	public void createEnemy() {
-		double x, y, distance;
-		do {
-			x = rand.nextDouble(-canvasWidth-300, canvasWidth+300);
-			y = rand.nextDouble(-canvasHeight-200, canvasHeight+200);
-			x += canvasWidth/2;
-			y += canvasHeight/2;
-			Point2D p1 = new Point2D(canvasWidth/2, canvasHeight/2);
-			Point2D p2 = new Point2D(x, y);
-			distance = p1.distance(p2);
-		} while(distance < 700);
+		double x = 0;
+		double y = 0;
+		double distance = 100;
+		int side = rand.nextInt(4);
+		switch(side) {
+			case 0:
+				x = rand.nextDouble() * canvasWidth;
+				y = -distance;
+				break;
+			case 1:
+				x = rand.nextDouble() * canvasWidth;
+				y = canvasHeight + distance;
+				break;
+			case 2:
+				x = -distance;
+				y = rand.nextDouble() * canvasHeight;
+				break;
+			case 3:
+				x = canvasWidth + distance;
+				y = rand.nextDouble() * canvasHeight;
+		}
 		Enemy enemy = new BasicEnemy(x, y, bugHomeX, bugHomeY, bugHomeRadius, canvasWidth, canvasHeight, trackers);
+		enemy.setRed(enemyRed);
+		enemy.setGreen(enemyGreen);
+		enemy.setBlue(enemyBlue);
+		enemy.setAlpha(enemyAlpha);
+		enemy.setSpeed(enemySpeed);
+		enemy.setSize(enemySize);
+		enemy.setFocus(enemyFocus);
+		enemy.setForce(enemyForce);
+		enemy.setDefenders(scouts, guards);
+		enemy.acquireTarget();
+		enemies.add(enemy);
+	}
+	
+	public void createMenuEnemy() {
+		double x = 0;
+		double y = 0;
+		double distance = 100;
+		int side = rand.nextInt(4);
+		switch(side) {
+			case 0:
+				x = rand.nextDouble() * canvasWidth;
+				y = -distance;
+				break;
+			case 1:
+				x = rand.nextDouble() * canvasWidth;
+				y = canvasHeight + distance;
+				break;
+			case 2:
+				x = -distance;
+				y = rand.nextDouble() * canvasHeight;
+				break;
+			case 3:
+				x = canvasWidth + distance;
+				y = rand.nextDouble() * canvasHeight;
+		}
+		Enemy enemy = new MenuEnemy(x, y, bugHomeX, bugHomeY, bugHomeRadius, canvasWidth, canvasHeight, trackers);
 		enemy.setRed(enemyRed);
 		enemy.setGreen(enemyGreen);
 		enemy.setBlue(enemyBlue);
@@ -71,12 +116,26 @@ public class EnemyManager {
 		removeDead();
 	}
 	
+	public void menuUpdateEnemies(double latency) {
+		enemySpawnTimer += latency;
+		if(enemySpawnTimer >= ENEMY_SPAWN_TIME && menuEnemyCount < 3) {
+			createMenuEnemy();
+			enemySpawnTimer = 0;
+			menuEnemyCount++;
+		}
+		IntStream.range(0, enemies.size()).parallel().forEach(index -> {
+			Enemy enemy = enemies.get(index);
+			enemy.updateEnemy(latency);
+		});
+		removeDead();
+	}
+	
 	public void removeDead() {
 		Iterator<Enemy> iterator = enemies.iterator();
 	    while (iterator.hasNext()) {
 	    	Enemy enemy = iterator.next();
 	    	if(enemy.isDead()) {
-	    		if(enemy.getAlpha() <= 0.0) {
+	    		if(enemy.getAlpha() <= 0.05) {
 	    			iterator.remove();
 	    		}
 	    	}
