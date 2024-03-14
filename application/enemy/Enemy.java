@@ -1,18 +1,26 @@
-package application;
+package application.enemy;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import application.SynchronizedTrackers;
+import application.bugz.Bug;
+import application.objects.BloodSplatter;
+
 public abstract class Enemy {
 	
-	private List<Scout> scouts;
-	private List<Guard> guards;
+	private final double FLING_TIME = 1.0;
+	private final int DEATH_PHASES = 3;
+	private final double FOCUS = 0.1;
+	private final int FORCE = 2;
+	
+	private List<List<? extends Bug>> defenders;
 	private List<BloodSplatter> bloodSplatters;
 	private Bug targetBug;
 	private int gridIndexX, gridIndexY, health, attackStage, deathPhase, experience, level, levelsPending;
-	private double x, y, directionX, directionY, velocityX, velocityY, targetX, targetY, latency, bugHomeX, bugHomeY, bugHomeRadius, focus, force,
-		alpha, red, green, blue, thrownVelocityX, thrownVelocityY, flingTimer, boundsX, boundsY;
+	private double x, y, directionX, directionY, velocityX, velocityY, targetX, targetY, latency, bugHomeX, bugHomeY, bugHomeRadius, alpha, 
+		thrownVelocityX, thrownVelocityY, flingTimer, boundsX, boundsY;
 	private boolean attackingBug, attackingBugHome, pickedUp, thrown, dead;
 	private SynchronizedTrackers trackers;
 	
@@ -23,16 +31,17 @@ public abstract class Enemy {
 		velocityY = 0;
 		targetX = 0;
 		targetY = 0;
-		flingTimer = 1.0;
-		deathPhase = 3;
+		flingTimer = FLING_TIME;
+		deathPhase = DEATH_PHASES;
 		level = 1;
+		alpha = 1.0;
 		this.x = x;
 		this.y = y;
 		this.boundsX = boundsX;
 		this.boundsY = boundsY;
-		this.setBugHomeX(bugHomeX);
-		this.setBugHomeY(bugHomeY);
-		this.setBugHomeRadius(bugHomeRadius);
+		this.bugHomeX = bugHomeX;
+		this.bugHomeY =bugHomeY;
+		this.bugHomeRadius = bugHomeRadius;
 		this.trackers = trackers;
 		bloodSplatters = new ArrayList<>();
 		createBloodSplatter();
@@ -41,7 +50,7 @@ public abstract class Enemy {
 	public void updateEnemy(double latency) {
 		this.latency = latency;
 		if(dead) {
-			alpha -= 0.001;
+			alpha -= latency/5;
 			return;
 		}
 		else if(pickedUp) {
@@ -70,8 +79,8 @@ public abstract class Enemy {
 	public void move() {
 		double deltaX = directionX - velocityX;
 		double deltaY = directionY - velocityY;
-		velocityX += deltaX * focus;
-		velocityY += deltaY * focus;
+		velocityX += deltaX * FOCUS;
+		velocityY += deltaY * FOCUS;
 		normalizeVelocity();
 		x += velocityX * latency;
 		y += velocityY * latency;
@@ -102,8 +111,8 @@ public abstract class Enemy {
 		directionX = targetX - x;
 		directionY = targetY - y;
 		normalizeDirection();
-		double nudgeX = (velocityX - directionX) / getForce();
-		double nudgeY = (velocityY - directionY) / getForce();
+		double nudgeX = (velocityX - directionX) / FORCE;
+		double nudgeY = (velocityY - directionY) / FORCE;
 		directionX += nudgeX;
 		directionY += nudgeY;
 	}
@@ -134,7 +143,7 @@ public abstract class Enemy {
 			}
 		}
 		else {
-			flingTimer = 1.0;
+			flingTimer = FLING_TIME;
 			thrown = false;
 		}
 	}
@@ -202,31 +211,15 @@ public abstract class Enemy {
 		this.velocityY = velocityY;
 	}
 	
-	public double getFocus() {
-		return focus;
-	}
-	
-	public void setFocus(double focus) {
-		this.focus = focus;
-	}
-	
-	public double getForce() {
-		return force;
-	}
-	
-	public void setForce(double force) {
-		this.force = force;
-	}
-	
 	// Each different type of enemy moves at different speeds
 	public abstract double getSpeed();
 	public abstract void setSpeed(double speed);
-
+	
 	// Each different type of enemy has a different size
 	public abstract double getSize();
 	public abstract void setSize(double size);
 	public abstract void increaseSize();
-
+	
 	public double getBugHomeX() {
 		return bugHomeX;
 	}
@@ -269,48 +262,6 @@ public abstract class Enemy {
 
 	public double getAlpha() {
 		return alpha;
-	}
-
-	public void setAlpha(double alpha) {
-		this.alpha = alpha;
-	}
-
-	public double getRed() {
-		return red;
-	}
-
-	public void setRed(double red) {
-		this.red = red;
-	}
-
-	public double getGreen() {
-		return green;
-	}
-
-	public void setGreen(double green) {
-		this.green = green;
-	}
-
-	public double getBlue() {
-		return blue;
-	}
-
-	public void setBlue(double blue) {
-		this.blue = blue;
-	}
-	
-	// Used to store all of the "defender" type bugz that the enemy may target
-	public void setDefenders(List<Scout> scouts, List<Guard> guards) {
-		this.scouts = scouts;
-		this.guards = guards;
-	}
-
-	public List<Scout> getScouts() {
-		return scouts;
-	}
-	
-	public List<Guard> getGuards() {
-		return guards;
 	}
 
 	public boolean isAttackingBug() {
@@ -488,5 +439,17 @@ public abstract class Enemy {
 	
 	public void setDirectionY(double direction) {
 		directionY = direction;
+	}
+	
+	public int getForce() {
+		return FORCE;
+	}
+
+	public List<List<? extends Bug>> getDefenders() {
+		return defenders;
+	}
+
+	public void setDefenders(List<List<? extends Bug>> defenders) {
+		this.defenders = defenders;
 	}
 }

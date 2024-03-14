@@ -1,8 +1,13 @@
 package application;
-
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.List;
 
 import application.controllers.MainMenuController;
+import application.save.GameData;
 import application.settings.GamePreferences;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -19,6 +24,7 @@ public class Main extends Application {
 	private double screenWidth, screenHeight;
 	private int resolutionWidth, resolutionHeight;
 	private boolean isFullScreen;
+	private GameData gameData;
 	private StageStyle stageStyle;
 
 	@Override
@@ -26,6 +32,7 @@ public class Main extends Application {
 		// Get any data needed for setting the stage and scene up
 		getScreenInformation();
 		getGamePreferences();
+		getGameData();
 		
 		// Load the FXML and gain access to its controller for setup, then place into scene
 		FXMLLoader loader = new FXMLLoader(getClass().getResource("fxml/MainMenu.fxml"));
@@ -63,9 +70,33 @@ public class Main extends Application {
 		stageStyle = GamePreferences.getStageStyle();
 	}
 	
+	private void getGameData() {
+		try {
+			String filePath = "src" + File.separator + "application" + File.separator + "save" + File.separator + "savedGameData.ser";
+			File savedGameDataFile = new File(filePath);
+			if(savedGameDataFile.exists()) {
+				ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filePath));
+				gameData = (GameData) ois.readObject();
+				ois.close();
+				System.out.println("read from file");
+				
+			}
+			else {
+				gameData = new GameData();
+				ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filePath));
+	            oos.writeObject(gameData);
+	            oos.close();
+				System.out.println("created new game data");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
 	private void setupController(MainMenuController controller, Stage stage) {
 		controller.setPrimaryStage(stage);
 		controller.setupStage(stage);
+		controller.setupGameData(gameData);
 	}
 	
 	public void configureStage(Stage stage) {

@@ -1,4 +1,4 @@
-package application;
+package application.bugz.pheromones;
 
 public class HomePheromone {
 	

@@ -27,7 +27,7 @@
 }
 
 .label {
-	-fx-opacity: 0.8;
+	-fx-opacity: 1.0;
 }
 
 .hud-label {
@@ -48,8 +48,6 @@
 .slider .track {
 	-fx-background-color: #444444;
 	-fx-background-radius: 0;
-	-fx-pref-width: 10px;
-	-fx-pref-height: 10px;
 }
 
 .slider .thumb {
@@ -96,4 +94,35 @@
 .choice-box > .label { 
 	-fx-text-fill: white;
 	-fx-font-size: 16;
+}
+
+.scroll-pane {
+	-fx-background-color: transparent;
+	-fx-border-color: transparent;
+	-fx-background-insets: 0,0,0;
+	-fx-background-radius: 0;
+}
+
+.scroll-pane .scroll-bar .thumb {
+	-fx-background-color: #777777;
+	-fx-background-radius: 0;
+}
+
+.scroll-pane .scroll-bar:vertical {
+	-fx-background-color: transparent;
+	-fx-background-radius: 0;
+	-fx-padding: 0;
+}
+
+
+.scroll-pane .scroll-bar .increment-arrow,
+.scroll-pane .scroll-bar .decrement-arrow {
+	-fx-padding: 0;
+}
+
+.scroll-pane .scroll-bar .increment-button,
+.scroll-pane .scroll-bar .decrement-button {
+	-fx-background-color: transparent;
+	-fx-background-radius: 0em;
+	-fx-padding: 0 0 0 0;
 }

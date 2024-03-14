@@ -1,22 +1,31 @@
-package application;
+package application.bugz;
 
 import java.util.List;
+
+import application.SynchronizedTrackers;
+import application.objects.Food;
 import javafx.geometry.Point2D;
 
 public class Worker extends Bug {
 	
 	private final int HEALTH = 1;
-	private final int MAX_ENERGY = 35;	// Determines how long a bug stays out of its home
-	private final int PERIMETER = 100;	// Determines how far away the bug can detect food
+	private final int MAX_ENERGY = 35;			// Determines how long a bug stays out of its home
+	private final int PERIMETER = 100;			// Determines how far away the bug can detect food
+	private final double SPEED = 50;			// Determines the speed of the bug
+	private final double SIZE =  3.0;			// Determines the size of the bug
 	private final int EXPERIENCE_ON_DEATH = 5;	// Determines how much experience is given to the enemy that kills this bug
 	private final int EXPERIENCE_TO_LEVEL = 50;	// Determines how much experience is needed to gain a level
 	private final int EXPERIENCE_FOR_FOOD = 3;	// Determines how much experience is gained for bringing food home
 	
+	private List<Food> food;
 	private double maxSpeed, size;
 
-	public Worker(double boundX, double boundY, List<Food> food, List<Enemy> enemies, double homeX, double homeY, double homeRadius, SynchronizedTrackers trackers) {
-		super(boundX, boundY, food, enemies, homeX, homeY, homeRadius, trackers);
+	public Worker(double boundX, double boundY, List<Food> food, double homeX, double homeY, double homeRadius, SynchronizedTrackers trackers) {
+		super(boundX, boundY, homeX, homeY, homeRadius, trackers);
 		setHealth(HEALTH);
+		setSize(SIZE);
+		setSpeed(SPEED);
+		this.food = food;
 	}
 
 	@Override
@@ -48,7 +57,6 @@ public class Worker extends Bug {
 	}
 	
 	private boolean senseFood() {
-		List<Food> food = getFood();
 		for(int i = 0; i < food.size(); i++) {
 			Food foodZone = food.get(i);
 			double test = new Point2D(getX(), getY()).distance(foodZone.getCenterX(), foodZone.getCenterY());

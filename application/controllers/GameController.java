@@ -6,12 +6,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 
-import application.BugManager;
-import application.CanvasManager;
-import application.Colony;
-import application.Enemy;
-import application.EnemyManager;
 import application.SynchronizedTrackers;
+import application.bugz.BugManager;
+import application.bugz.colony.Colony;
+import application.bugz.colony.FireColony;
+import application.canvas.CanvasManager;
+import application.enemy.Enemy;
+import application.enemy.EnemyManager;
+import application.objects.ObjectsManager;
+import application.save.GameData;
 import application.settings.GamePreferences;
 import javafx.animation.AnimationTimer;
 import javafx.animation.FadeTransition;
@@ -72,10 +75,12 @@ public class GameController implements Initializable {
 	@FXML private ProgressBar workerProgress, guardProgress, scoutProgress, queenProgress, exitProgress, repairProgress, workerProgress2, guardProgress2, 
 		scoutProgress2, queenProgress2, exitProgress2, repairProgress2;
 	
+	private GameData gameData;
 	private Stage stage;
 	private AnimationTimer timer;
 	private Colony colony;
 	private BugManager bm;
+	private ObjectsManager om;
 	private CanvasManager cm;
 	private EnemyManager em;
 	private SynchronizedTrackers trackers;
@@ -103,6 +108,7 @@ public class GameController implements Initializable {
 		createColonyShapes();
 		setButtonGraphics();
 		createColony();
+		createManagers();
 		setupColonyHud();
 		clearHudSelection();
 		prepareCanvases();
@@ -501,28 +507,35 @@ public class GameController implements Initializable {
 	}
 	
 	public void createColony() {
-		colony = new Colony(canvasWidth, canvasHeight, 40);
-		cm = colony.getCm();
+		colony = new FireColony(canvasWidth, canvasHeight, 40);
 		bm = colony.getBm();
-		em = colony.getEm();
 		trackers = colony.getTrackers();
-		bm.setBugRed(bugzRed);
-		bm.setBugGreen(bugzGreen);
-		bm.setBugBlue(bugzBlue);
-		bm.setBugAlpha(0.9);
-		em.setEnemyRed(enemyRed);
-		em.setEnemyGreen(enemyGreen);
-		em.setEnemyBlue(enemyBlue);
-		em.setEnemyAlpha(1.0);
-		em.setEnemySpeed(50);
-		em.setEnemySize(3);
-		em.setEnemyFocus(0.1);
-		em.setEnemyForce(2);
+		om = new ObjectsManager(canvasWidth, canvasHeight);
+		bm.setFood(om.getFood());
+		bm.setQueens(1);
+		bm.setExits(1);
+		colony.setupColony(0,100,0,0);
+	}
+	
+	public void createManagers() {
+		em = new EnemyManager(colony.getX(), colony.getY(), colony.getRadius(), canvasWidth, canvasHeight);
+		em.setDefenders(colony.getBm().getDefenders());
+		em.setTrackers(trackers);
+		cm = new CanvasManager();
+		cm.setupCM(colony.getX(), colony.getY(), colony.getRadius(), bm.getBugz(), em.getEnemies(), om.getFood(), trackers, 
+				bm.getPM().getHPheromone(), bm.getPM().getFPheromone(), bm.getPM().getCellWidth(), bm.getPM().getCellHeight(), bm.getPM().getXCells(), bm.getPM().getYCells());
 		cm.setBgRed(bgRed);
 		cm.setBgGreen(bgGreen);
 		cm.setBgBlue(bgBlue);
 		cm.setBgAlpha(1.0);
-		colony.setupGameColony();
+		cm.setBugRed(bugzRed);
+		cm.setBugGreen(bugzGreen);
+		cm.setBugBlue(bugzBlue);
+		cm.setBugAlpha(1.0);
+		cm.setEnemyRed(enemyRed);
+		cm.setEnemyGreen(enemyGreen);
+		cm.setEnemyBlue(enemyBlue);
+		cm.setEnemyAlpha(1.0);
 	}
 	
 	public void setupColonyHud() {
@@ -561,7 +574,7 @@ public class GameController implements Initializable {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				bugzRed = (int)bugzRedSlider.getValue();
-				bm.setBugRed(bugzRed);
+				cm.setBugRed(bugzRed);
 				GamePreferences.setBugRed(bugzRed);
 				bugzRedValue.setText("" + bugzRed);
 				cm.drawBugz();
@@ -573,7 +586,7 @@ public class GameController implements Initializable {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				bugzGreen = (int)bugzGreenSlider.getValue();
-				bm.setBugGreen(bugzGreen);
+				cm.setBugGreen(bugzGreen);
 				GamePreferences.setBugGreen(bugzGreen);
 				bugzGreenValue.setText("" + bugzGreen);
 				cm.drawBugz();
@@ -585,7 +598,7 @@ public class GameController implements Initializable {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				bugzBlue = (int)bugzBlueSlider.getValue();
-				bm.setBugBlue(bugzBlue);
+				cm.setBugBlue(bugzBlue);
 				GamePreferences.setBugBlue(bugzBlue);
 				bugzBlueValue.setText("" + bugzBlue);
 				cm.drawBugz();
@@ -597,7 +610,7 @@ public class GameController implements Initializable {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				enemyRed = (int)enemyRedSlider.getValue();
-				em.setEnemyRed(enemyRed);
+				cm.setEnemyRed(enemyRed);
 				GamePreferences.setEnemyRed(enemyRed);
 				enemyRedValue.setText("" + enemyRed);
 				cm.drawEnemies();
@@ -609,7 +622,7 @@ public class GameController implements Initializable {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				enemyGreen = (int)enemyGreenSlider.getValue();
-				em.setEnemyGreen(enemyGreen);
+				cm.setEnemyGreen(enemyGreen);
 				GamePreferences.setEnemyGreen(enemyGreen);
 				enemyGreenValue.setText("" + enemyGreen);
 				cm.drawEnemies();
@@ -621,7 +634,7 @@ public class GameController implements Initializable {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				enemyBlue = (int)enemyBlueSlider.getValue();
-				em.setEnemyBlue(enemyBlue);
+				cm.setEnemyBlue(enemyBlue);
 				GamePreferences.setEnemyBlue(enemyBlue);
 				enemyBlueValue.setText("" + enemyBlue);
 				cm.drawEnemies();
@@ -748,8 +761,14 @@ public class GameController implements Initializable {
 	public void update(long now) {
 		latency = (now - lastFrameTime) / 1_000_000_000.0;
 		colony.update(latency);
+		om.updateFood(latency);
+		em.update(latency, gameTime);
+		cm.draw();
 		updateUI(latency);
 		if(colony.getTrackers().getColonyHealth() <= 0) {
+			gameOver();
+		}
+		if(gameTime >= 900) {
 			gameOver();
 		}
 		lastFrameTime = now;
@@ -814,7 +833,7 @@ public class GameController implements Initializable {
 	}
 	
 	public void gameOver() {
-		colony.getCm().killColony();
+		cm.killColony();
 		animate();
 		timer = null;
 	}
@@ -1036,15 +1055,19 @@ public class GameController implements Initializable {
 		if(animating) {
 			int x = (int)m.getX();
 			int y = (int)m.getY();
-			for(int i = 0; i < em.getEnemies().size(); i++) {
-				Enemy enemy = em.getEnemies().get(i);
-				double test = new Point2D(x, y).distance(enemy.getX(), enemy.getY());
-				if(test <= enemy.getSize()) {
-					enemy.setPickedUp(true);
-					pickedUpEnemy = enemy;
-					recentMousePositions.clear();
-					recentMousePositions.add(new Point2D(x,y));
-					break;
+			List<List<? extends Enemy>> enemies = em.getEnemies();
+			for(int i = 0; i < enemies.size(); i++) {
+				List<? extends Enemy> enemyGroup = enemies.get(i);
+				for(int j = 0; j < enemyGroup.size(); j++) {
+					Enemy enemy = enemyGroup.get(j);
+					double test = new Point2D(x, y).distance(enemy.getX(), enemy.getY());
+					if(test <= enemy.getSize()) {
+						enemy.setPickedUp(true);
+						pickedUpEnemy = enemy;
+						recentMousePositions.clear();
+						recentMousePositions.add(new Point2D(x,y));
+						break;
+					}
 				}
 			}
 		}
@@ -1125,6 +1148,10 @@ public class GameController implements Initializable {
 		stage.iconifiedProperty().addListener(minimizeListener);
 	}
 	
+	public void setupGameData(GameData data) {
+		gameData = data;
+	}
+
 	public Colony getColony() {
 		return colony;
 	}

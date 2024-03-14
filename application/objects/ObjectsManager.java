@@ -1,9 +1,10 @@
-package application;
+package application.objects;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+
 import javafx.geometry.Point2D;
 
 public class ObjectsManager {

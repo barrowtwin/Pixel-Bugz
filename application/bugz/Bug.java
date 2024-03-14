@@ -1,38 +1,47 @@
-package application;
+package application.bugz;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+import application.SynchronizedTrackers;
+import application.bugz.pheromones.FoodPheromone;
+import application.bugz.pheromones.HomePheromone;
+import application.enemy.Enemy;
+import application.objects.BloodSplatter;
+import application.objects.Food;
 import javafx.geometry.Point2D;
 
 public abstract class Bug {
+	
+	private final double FOCUS = 0.1;
+	private final int FORCE = 2;
 	
 	private HomePheromone hPhero;
 	private FoodPheromone fPhero;
 	private Random rand;
 	private List<Food> food;
-	private List<Enemy> enemies;
+	private List<List<? extends Enemy>> enemies;
 	private List<BloodSplatter> bloodSplatters;
 	private Enemy targetEnemy;
 	private SynchronizedTrackers trackers;
 	
-	private int gridIndexX, gridIndexY, red, green, blue, health, attackStage, deathPhase, experience, level, levelsPending;
+	private int gridIndexX, gridIndexY, health, attackStage, deathPhase, experience, level, levelsPending;
 	private boolean inHome, queueRelease, fullEnergy, hasFood, dead, attacking;
-	private double x, y, boundsX, boundsY, focus, force, alpha, homeX, homeY, homeRadius, latency, timeAway, energy, directionX, directionY,
+	private double x, y, boundsX, boundsY, alpha, homeX, homeY, homeRadius, latency, timeAway, energy, directionX, directionY,
 	velocityX, velocityY, finalVelocityX, finalVelocityY, targetX, targetY;
 	
-	public Bug(double boundX, double boundY, List<Food> food, List<Enemy> enemies, double homeX, double homeY, double homeRadius, SynchronizedTrackers trackers) {
+	public Bug(double boundX, double boundY, double homeX, double homeY, double homeRadius, SynchronizedTrackers trackers) {
 		timeAway = 0;
 		deathPhase = 3;
 		rand = new Random();
 		boundsX = boundX;
 		boundsY = boundY;
 		level = 1;
+		alpha = 1.0;
 		this.homeX = homeX;
 		this.homeY = homeY;
 		this.homeRadius = homeRadius;
-		this.food = food;
-		this.enemies = enemies;
 		fullEnergy = true;
 		hasFood = false;
 		inHome = true;
@@ -80,8 +89,8 @@ public abstract class Bug {
 	private void move() {
 		double deltaX = directionX - velocityX;
 		double deltaY = directionY - velocityY;
-		velocityX += deltaX * focus;
-		velocityY += deltaY * focus;
+		velocityX += deltaX * FOCUS;
+		velocityY += deltaY * FOCUS;
 		normalizeVelocity();
 		finalVelocityX = velocityX * latency;
 		finalVelocityY = velocityY * latency;
@@ -212,51 +221,15 @@ public abstract class Bug {
 	}
 	
 	public double getFocus() {
-		return focus;
-	}
-	
-	public void setFocus(double focus) {
-		this.focus = focus;
-	}
-	
-	public int getRed() {
-		return red;
-	}
-
-	public void setRed(int red) {
-		this.red = red;
-	}
-
-	public int getGreen() {
-		return green;
-	}
-
-	public void setGreen(int green) {
-		this.green = green;
-	}
-
-	public int getBlue() {
-		return blue;
-	}
-
-	public void setBlue(int blue) {
-		this.blue = blue;
+		return FOCUS;
 	}
 	
 	public double getAlpha() {
 		return alpha;
 	}
-
-	public void setAlpha(double alpha) {
-		this.alpha = alpha;
-	}
 	
 	public double getForce() {
-		return force;
-	}
-	
-	public void setForce(double force) {
-		this.force = force;
+		return FORCE;
 	}
 	
 	public double getTimeAway() {
@@ -427,11 +400,11 @@ public abstract class Bug {
 		dead = status;
 	}
 
-	public List<Enemy> getEnemies() {
+	public List<List<? extends Enemy>> getEnemies() {
 		return enemies;
 	}
 
-	public void setEnemies(List<Enemy> enemies) {
+	public void setEnemies(List<List<? extends Enemy>> enemies) {
 		this.enemies = enemies;
 	}
 	

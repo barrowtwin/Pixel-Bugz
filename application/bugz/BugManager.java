@@ -1,10 +1,17 @@
-package application;
+package application.bugz;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
+
+import application.SynchronizedTrackers;
+import application.bugz.pheromones.FoodPheromone;
+import application.bugz.pheromones.HomePheromone;
+import application.bugz.pheromones.PheromoneManager;
+import application.enemy.Enemy;
+import application.objects.Food;
 
 public class BugManager {
 
@@ -20,35 +27,45 @@ public class BugManager {
 	private final double EXIT_COST = 500;
 	private final double REPAIR_COST = 100;
 	
-	private ObjectsManager om;
 	private PheromoneManager pm;
 	private SynchronizedTrackers trackers;
 	private Random rand;
-	private List<Enemy> enemies;
-	private List<Worker> workers;
-	private List<Scout> scouts; 
-	private List<Guard> guards;
+	private List<List<? extends Enemy>> enemies;
+	private List<Bug> menuBugz;
+	private List<Bug> workers;
+	private List<Bug> scouts; 
+	private List<Bug> guards;
 	private List<Bug> bugzToRelease;
-	private int bugSize, queens, colonyExits, spawnerSelector, instantSpawnSelector, workerCounter, bugRed, bugGreen, bugBlue, scoutDeaths, guardDeaths, workerDeaths;
-	private double homeX, homeY, homeRadius, canvasWidth, canvasHeight, releaseTime, exitTimer, bugAlpha, bugSpeed, bugFocus, bugForce,
-		workerSpawnTimer, scoutSpawnTimer, guardSpawnTimer, queenSpawnTimer, exitCreationTimer, gridCellWidth, gridCellHeight, latency;
+	private List<List<? extends Bug>> bugz;
+	private List<List<? extends Bug>> defenders;
+	private List<Food> food;
+	private int queens, colonyExits, spawnerSelector, instantSpawnSelector, workerCounter, scoutDeaths, guardDeaths, workerDeaths;
+	private double homeX, homeY, homeRadius, canvasWidth, canvasHeight, releaseTime, exitTimer, workerSpawnTimer, scoutSpawnTimer, guardSpawnTimer, queenSpawnTimer,
+		exitCreationTimer, gridCellWidth, gridCellHeight, latency;
 	private boolean creatingExit, repairing;
 	
-	public BugManager(double width, double height, ObjectsManager om, double homeX, double homeY, double homeRadius, SynchronizedTrackers trackers) {
+	public BugManager(double width, double height, double homeX, double homeY, double homeRadius, SynchronizedTrackers trackers) {
+		menuBugz = new ArrayList<>();
 		workers = new ArrayList<>();
 		scouts = new ArrayList<>();
 		guards = new ArrayList<>();
+		defenders = new ArrayList<>();
+		defenders.add(scouts);
+		defenders.add(guards);
 		bugzToRelease = new ArrayList<>();
+		// The order that the bug groups are placed into the bugz array is important for drawing the bugz
+		bugz = new ArrayList<>();
+		bugz.add(menuBugz);
+		bugz.add(workers);
+		bugz.add(scouts);
+		bugz.add(guards);
 		pm = new PheromoneManager(width, height);
-		this.om = om;
 		this.homeX = homeX;
 		this.homeY = homeY;
 		this.homeRadius = homeRadius;
 		canvasWidth = width;
 		canvasHeight = height;
 		releaseTime = 0.2;
-		queens = 1;
-		colonyExits = 1000;
 		exitTimer = 0;
 		spawnerSelector = 0;
 		this.trackers = trackers;
@@ -65,7 +82,6 @@ public class BugManager {
 		releaseBugz();
 		createExit();
 		updateBugz();
-		
 		// Updates active pheromone timers
 		pm.updatePheromones(latency);
 	}
@@ -84,46 +100,22 @@ public class BugManager {
 			case(0):
 				break;
 			case(1):
-				Worker worker = new Worker(canvasWidth, canvasHeight, om.getFood(), enemies, homeX, homeY, homeRadius, trackers);
+				Worker worker = new Worker(canvasWidth, canvasHeight, food, homeX, homeY, homeRadius, trackers);
 				workers.add(worker);
-				worker.setRed(bugRed);
-				worker.setGreen(bugGreen);
-				worker.setBlue(bugBlue);
-				worker.setAlpha(bugAlpha);
-				worker.setSpeed(bugSpeed);
-				worker.setSize(bugSize);
-				worker.setFocus(bugFocus);
-				worker.setForce(bugForce);
 				worker.setEnergy();
 				worker.setX(homeX);
 				worker.setY(homeY);
 				break;
 			case(2):
-				Scout scout = new Scout(canvasWidth, canvasHeight, om.getFood(), enemies, homeX, homeY, homeRadius, trackers);
+				Scout scout = new Scout(canvasWidth, canvasHeight, enemies, homeX, homeY, homeRadius, trackers);
 				scouts.add(scout);
-				scout.setRed(bugRed);
-				scout.setGreen(bugGreen);
-				scout.setBlue(bugBlue);
-				scout.setAlpha(bugAlpha);
-				scout.setSpeed(bugSpeed);
-				scout.setSize(bugSize);
-				scout.setFocus(bugFocus);
-				scout.setForce(bugForce);
 				scout.setEnergy();
 				scout.setX(homeX);
 				scout.setY(homeY);
 				break;
 			case(3):
-				Guard guard = new Guard(canvasWidth, canvasHeight, om.getFood(), enemies, homeX, homeY, homeRadius, trackers);
+				Guard guard = new Guard(canvasWidth, canvasHeight, enemies, homeX, homeY, homeRadius, trackers);
 				guards.add(guard);
-				guard.setRed(bugRed);
-				guard.setGreen(bugGreen);
-				guard.setBlue(bugBlue);
-				guard.setAlpha(bugAlpha);
-				guard.setSpeed(bugSpeed);
-				guard.setSize(bugSize);
-				guard.setFocus(bugFocus);
-				guard.setForce(bugForce);
 				guard.setEnergy();
 				guard.setX(homeX);
 				guard.setY(homeY);
@@ -137,36 +129,31 @@ public class BugManager {
 	}
 	
 	// Called during creation of colony to give player starter bugz
-	public void createStarterBugz() {
-		for(int i = 0; i < 50000; i++) {
-			Worker bug = new Worker(canvasWidth, canvasHeight, om.getFood(), enemies, homeX, homeY, homeRadius, trackers);
-			workers.add(bug);
-			bug.setRed(bugRed);
-			bug.setGreen(bugGreen);
-			bug.setBlue(bugBlue);
-			bug.setAlpha(bugAlpha);
-			bug.setSpeed(bugSpeed);
-			bug.setSize(bugSize);
-			bug.setFocus(bugFocus);
-			bug.setForce(bugForce);
+	public void createStarterBugz(int menuBugsCount, int workersCount, int guardsCount, int scoutsCount) {
+		for(int i = 0; i < menuBugsCount; i++) {
+			Bug bug = new MenuBug(canvasWidth, canvasHeight, homeX, homeY, homeRadius, trackers);
+			menuBugz.add(bug);
 			bug.setEnergy();
 			bug.setX(homeX);
 			bug.setY(homeY);
 		}
-	}
-	
-	public void createMenuBugz() {
-		for(int i = 0; i < 100; i++) {
-			Worker bug = new Worker(canvasWidth, canvasHeight, om.getFood(), enemies, homeX, homeY, homeRadius, trackers);
+		for(int i = 0; i < workersCount; i++) {
+			Bug bug = new Worker(canvasWidth, canvasHeight, food, homeX, homeY, homeRadius, trackers);
 			workers.add(bug);
-			bug.setRed(bugRed);
-			bug.setGreen(bugGreen);
-			bug.setBlue(bugBlue);
-			bug.setAlpha(bugAlpha);
-			bug.setSpeed(bugSpeed);
-			bug.setSize(bugSize);
-			bug.setFocus(bugFocus);
-			bug.setForce(bugForce);
+			bug.setEnergy();
+			bug.setX(homeX);
+			bug.setY(homeY);
+		}
+		for(int i = 0; i < guardsCount; i++) {
+			Bug bug = new Guard(canvasWidth, canvasHeight, enemies, homeX, homeY, homeRadius, trackers);
+			guards.add(bug);
+			bug.setEnergy();
+			bug.setX(homeX);
+			bug.setY(homeY);
+		}
+		for(int i = 0; i < scoutsCount; i++) {
+			Bug bug = new Scout(canvasWidth, canvasHeight, enemies, homeX, homeY, homeRadius, trackers);
+			scouts.add(bug);
 			bug.setEnergy();
 			bug.setX(homeX);
 			bug.setY(homeY);
@@ -204,16 +191,8 @@ public class BugManager {
 			while(workerSpawnTimer >= WORKER_SPAWN_TIME) {
 				workerCounter++;
 				workerSpawnTimer = workerSpawnTimer - WORKER_SPAWN_TIME;
-				Worker bug = new Worker(canvasWidth, canvasHeight, om.getFood(), enemies, homeX, homeY, homeRadius, trackers);
+				Bug bug = new Worker(canvasWidth, canvasHeight, food, homeX, homeY, homeRadius, trackers);
 				workers.add(bug);
-				bug.setRed(bugRed);
-				bug.setGreen(bugGreen);
-				bug.setBlue(bugBlue);
-				bug.setAlpha(bugAlpha);
-				bug.setSpeed(bugSpeed);
-				bug.setSize(bugSize);
-				bug.setFocus(bugFocus);
-				bug.setForce(bugForce);
 				bug.setEnergy();
 				bug.setX(homeX);
 				bug.setY(homeY);
@@ -233,16 +212,8 @@ public class BugManager {
 			trackers.decreaseCurrentFood(cost);
 			while(scoutSpawnTimer >= SCOUT_SPAWN_TIME) {
 				scoutSpawnTimer = scoutSpawnTimer - SCOUT_SPAWN_TIME;
-				Scout bug = new Scout(canvasWidth, canvasHeight, om.getFood(), enemies, homeX, homeY, homeRadius, trackers);
+				Bug bug = new Scout(canvasWidth, canvasHeight, enemies, homeX, homeY, homeRadius, trackers);
 				scouts.add(bug);
-				bug.setRed(bugRed);
-				bug.setGreen(bugGreen);
-				bug.setBlue(bugBlue);
-				bug.setAlpha(bugAlpha);
-				bug.setSpeed(bugSpeed);
-				bug.setSize(bugSize);
-				bug.setFocus(bugFocus);
-				bug.setForce(bugForce);
 				bug.setEnergy();
 				bug.setX(homeX);
 				bug.setY(homeY);
@@ -259,16 +230,8 @@ public class BugManager {
 			trackers.decreaseCurrentFood(cost);
 			while(guardSpawnTimer >= GUARD_SPAWN_TIME) {
 				guardSpawnTimer = guardSpawnTimer - GUARD_SPAWN_TIME;
-				Guard bug = new Guard(canvasWidth, canvasHeight, om.getFood(), enemies, homeX, homeY, homeRadius, trackers);
+				Bug bug = new Guard(canvasWidth, canvasHeight, enemies, homeX, homeY, homeRadius, trackers);
 				guards.add(bug);
-				bug.setRed(bugRed);
-				bug.setGreen(bugGreen);
-				bug.setBlue(bugBlue);
-				bug.setAlpha(bugAlpha);
-				bug.setSpeed(bugSpeed);
-				bug.setSize(bugSize);
-				bug.setFocus(bugFocus);
-				bug.setForce(bugForce);
 				bug.setEnergy();
 				bug.setX(homeX);
 				bug.setY(homeY);
@@ -340,45 +303,21 @@ public class BugManager {
 	// This is where each bug is updated with behavior and grid information
 	// Anything put inside this needs to be thread safe. It will perform each iteration in parallel on 2 threads
 	public void updateBugz() {
-		// Updates workers first (no specific reason)
-		IntStream.range(0, workers.size()).parallel().forEach(index -> {
-			Bug bug = workers.get(index);
-			bug.updateBug(latency);
-			updateGridLocations(bug);
-			if(bug.getHealth() <= 0) {
-				increaseWorkerDeaths();
-			}
-			if(bug.isFullEnergy() && bug.isHome() && !bug.isQueueRelease()) {
-				bug.setQueueRelease(true);
-				addToBugzToRelease(bug); // synchronized
-			}
-		});
-		// Updates scouts next
-		IntStream.range(0, scouts.size()).parallel().forEach(index -> {
-			Bug bug = scouts.get(index);
-			bug.updateBug(latency);
-			updateGridLocations(bug);
-			if(bug.getHealth() <= 0) {
-				increaseScoutDeaths();
-			}
-			if(bug.isFullEnergy() && bug.isHome() && !bug.isQueueRelease()) {
-				bug.setQueueRelease(true);
-				addToBugzToRelease(bug); // synchronized
-			}
-		});
-		// Updates guards next
-		IntStream.range(0, guards.size()).parallel().forEach(index -> {
-			Bug bug = guards.get(index);
-			bug.updateBug(latency);
-			updateGridLocations(bug);
-			if(bug.getHealth() <= 0) {
-				increaseGuardDeaths();
-			}
-			if(bug.isFullEnergy() && bug.isHome() && !bug.isQueueRelease()) {
-				bug.setQueueRelease(true);
-				addToBugzToRelease(bug); // synchronized
-			}
-		});
+		for(int i = 0; i < bugz.size(); i++) {
+			List<? extends Bug> bugGroup = bugz.get(i);
+			IntStream.range(0, bugGroup.size()).parallel().forEach(index -> {
+				Bug bug = bugGroup.get(index);
+				bug.updateBug(latency);
+				updateGridLocations(bug);
+				if(bug.getHealth() <= 0) {
+					increaseWorkerDeaths();
+				}
+				if(bug.isFullEnergy() && bug.isHome() && !bug.isQueueRelease()) {
+					bug.setQueueRelease(true);
+					addToBugzToRelease(bug); // synchronized
+				}
+			});
+		}
 		// Check if any bugs died, and if so, see if it is time to remove them
 		if(workerDeaths > 0) {
 			removeDeadWorkers();
@@ -399,9 +338,9 @@ public class BugManager {
 	// If yes, then check if alpha is 0 and remove if so
 	// If bug is dead, alpha is reduced each frame in bug update
 	public void removeDeadWorkers() {
-		Iterator<Worker> iterator = workers.iterator();
+		Iterator<Bug> iterator = workers.iterator();
 	    while (iterator.hasNext()) {
-	    	Worker bug = iterator.next();
+	    	Bug bug = iterator.next();
 	    	if(bug.isDead()) {
 	    		if(bug.getAlpha() <= 0.0) {
 	    			iterator.remove();
@@ -414,9 +353,9 @@ public class BugManager {
 	// If yes, then check if alpha is 0 and remove if so
 	// If bug is dead, alpha is reduced each frame in bug update
 	public void removeDeadScouts() {
-		Iterator<Scout> iterator = scouts.iterator();
+		Iterator<Bug> iterator = scouts.iterator();
 	    while (iterator.hasNext()) {
-	    	Scout bug = iterator.next();
+	    	Bug bug = iterator.next();
 	    	if(bug.isDead()) {
 	    		if(bug.getAlpha() <= 0.0) {
 	    			iterator.remove();
@@ -429,9 +368,9 @@ public class BugManager {
 	// If yes, then check if alpha is 0 and remove if so
 	// If bug is dead, alpha is reduced each frame in bug update
 	public void removeDeadGuards() {
-		Iterator<Guard> iterator = guards.iterator();
+		Iterator<Bug> iterator = guards.iterator();
 	    while (iterator.hasNext()) {
-	    	Guard bug = iterator.next();
+	    	Bug bug = iterator.next();
 	    	if(bug.isDead()) {
 	    		if(bug.getAlpha() <= 0.0) {
 	    			iterator.remove();
@@ -516,15 +455,23 @@ public class BugManager {
 		bugzToRelease.add(bug);
 	}
 	
-	public List<Worker> getWorkers() {
+	public void clearBugzToRelease() {
+		bugzToRelease.clear();
+	}
+	
+	public List<Bug> getMenuBugz() {
+		return menuBugz;
+	}
+	
+	public List<Bug> getWorkers() {
 		return workers;
 	}
 	
-	public List<Scout> getScouts() {
+	public List<Bug> getScouts() {
 		return scouts;
 	}
 	
-	public List<Guard> getGuards() {
+	public List<Bug> getGuards() {
 		return guards;
 	}
 	
@@ -536,168 +483,12 @@ public class BugManager {
 		return pm;
 	}
 	
-	public ObjectsManager getOM() {
-		return om;
+	public List<Food> getFood() {
+		return food;
 	}
-
-	public int getBugRed() {
-		return bugRed;
-	}
-
-	public void setBugRed(int bugRed) {
-		this.bugRed = bugRed;
-		for(int i = 0; i < workers.size(); i++) {
-			Bug bug = workers.get(i);
-			bug.setRed(bugRed);
-		}
-		for(int i = 0; i < scouts.size(); i++) {
-			Bug bug = scouts.get(i);
-			bug.setRed(bugRed);
-		}
-		for(int i = 0; i < guards.size(); i++) {
-			Bug bug = guards.get(i);
-			bug.setRed(bugRed);
-		}
-	}
-
-	public int getBugGreen() {
-		return bugGreen;
-	}
-
-	public void setBugGreen(int bugGreen) {
-		this.bugGreen = bugGreen;
-		for(int i = 0; i < workers.size(); i++) {
-			Bug bug = workers.get(i);
-			bug.setGreen(bugGreen);
-		}
-		for(int i = 0; i < scouts.size(); i++) {
-			Bug bug = scouts.get(i);
-			bug.setGreen(bugGreen);
-		}
-		for(int i = 0; i < guards.size(); i++) {
-			Bug bug = guards.get(i);
-			bug.setGreen(bugGreen);
-		}
-	}
-
-	public int getBugBlue() {
-		return bugBlue;
-	}
-
-	public void setBugBlue(int bugBlue) {
-		this.bugBlue = bugBlue;
-		for(int i = 0; i < workers.size(); i++) {
-			Bug bug = workers.get(i);
-			bug.setBlue(bugBlue);
-		}
-		for(int i = 0; i < scouts.size(); i++) {
-			Bug bug = scouts.get(i);
-			bug.setBlue(bugBlue);
-		}
-		for(int i = 0; i < guards.size(); i++) {
-			Bug bug = guards.get(i);
-			bug.setBlue(bugBlue);
-		}
-	}
-
-	public double getBugAlpha() {
-		return bugAlpha;
-	}
-
-	public void setBugAlpha(double bugAlpha) {
-		this.bugAlpha = bugAlpha;
-		for(int i = 0; i < workers.size(); i++) {
-			Bug bug = workers.get(i);
-			bug.setAlpha(bugAlpha);
-		}
-		for(int i = 0; i < scouts.size(); i++) {
-			Bug bug = scouts.get(i);
-			bug.setAlpha(bugAlpha);
-		}
-		for(int i = 0; i < guards.size(); i++) {
-			Bug bug = guards.get(i);
-			bug.setAlpha(bugAlpha);
-		}
-	}
-
-	public int getBugSize() {
-		return bugSize;
-	}
-
-	public void setBugSize(int bugSize) {
-		this.bugSize = bugSize;
-		for(int i = 0; i < workers.size(); i++) {
-			Bug bug = workers.get(i);
-			bug.setSize(bugSize);
-		}
-		for(int i = 0; i < scouts.size(); i++) {
-			Bug bug = scouts.get(i);
-			bug.setSize(bugSize);
-		}
-		for(int i = 0; i < guards.size(); i++) {
-			Bug bug = guards.get(i);
-			bug.setSize(bugSize);
-		}
-	}
-
-	public double getBugSpeed() {
-		return bugSpeed;
-	}
-
-	public void setBugSpeed(double bugSpeed) {
-		this.bugSpeed = bugSpeed;
-		for(int i = 0; i < workers.size(); i++) {
-			Bug bug = workers.get(i);
-			bug.setSpeed(bugSpeed);
-		}
-		for(int i = 0; i < scouts.size(); i++) {
-			Bug bug = scouts.get(i);
-			bug.setSpeed(bugSpeed);
-		}
-		for(int i = 0; i < guards.size(); i++) {
-			Bug bug = guards.get(i);
-			bug.setSpeed(bugSpeed);
-		}
-	}
-
-	public double getBugFocus() {
-		return bugFocus;
-	}
-
-	public void setBugFocus(double bugFocus) {
-		this.bugFocus = bugFocus;
-		for(int i = 0; i < workers.size(); i++) {
-			Bug bug = workers.get(i);
-			bug.setFocus(bugFocus);
-		}
-		for(int i = 0; i < scouts.size(); i++) {
-			Bug bug = scouts.get(i);
-			bug.setFocus(bugFocus);
-		}
-		for(int i = 0; i < guards.size(); i++) {
-			Bug bug = guards.get(i);
-			bug.setFocus(bugFocus);
-		}
-	}
-
-	public double getBugForce() {
-		return bugForce;
-	}
-
-	public void setBugForce(double bugForce) {
-		this.bugForce = bugForce;
-		for(int i = 0; i < workers.size(); i++) {
-			Bug bug = workers.get(i);
-			bug.setForce(bugForce);
-		}
-		for(int i = 0; i < scouts.size(); i++) {
-			Bug bug = scouts.get(i);
-			bug.setForce(bugForce);
-		}
-		for(int i = 0; i < guards.size(); i++) {
-			Bug bug = guards.get(i);
-			bug.setForce(bugForce);
-		}
+	
+	public void setFood(List<Food> food) {
+		this.food = food;
 	}
 	
 	public int getBugzToReleaseSize() {
@@ -772,11 +563,11 @@ public class BugManager {
 		return QUEEN_SPAWN_TIME;
 	}
 	
-	public void setEnemies(List<Enemy> enemies) {
+	public void setEnemies(List<List<? extends Enemy>> enemies) {
 		this.enemies = enemies;
 	}
 	
-	public List<Enemy> getEnemies() {
+	public List<List<? extends Enemy>> getEnemies() {
 		return enemies;
 	}
 	
@@ -816,7 +607,19 @@ public class BugManager {
 		return EXIT_CREATION_TIME;
 	}
 	
+	public void setExits(int exits) {
+		colonyExits = exits;
+	}
+	
 	public void setInstantSpawnSelector(int value) {
 		instantSpawnSelector = value;
+	}
+	
+	public List<List<? extends Bug>> getBugz() {
+		return bugz;
+	}
+
+	public List<List<? extends Bug>> getDefenders() {
+		return defenders;
 	}
 }

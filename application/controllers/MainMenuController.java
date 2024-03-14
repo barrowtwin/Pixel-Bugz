@@ -5,12 +5,16 @@ import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
 
-import application.BugManager;
-import application.CanvasManager;
-import application.Colony;
-import application.Enemy;
-import application.EnemyManager;
-import application.Worker;
+import application.SynchronizedTrackers;
+import application.bugz.Bug;
+import application.bugz.BugManager;
+import application.bugz.colony.Colony;
+import application.bugz.colony.MenuColony;
+import application.canvas.CanvasManager;
+import application.enemy.Enemy;
+import application.enemy.EnemyManager;
+import application.objects.ObjectsManager;
+import application.save.GameData;
 import application.settings.GamePreferences;
 import javafx.animation.AnimationTimer;
 import javafx.animation.FadeTransition;
@@ -73,6 +77,8 @@ public class MainMenuController implements Initializable {
 	private BugManager bm;
 	private CanvasManager cm;
 	private EnemyManager em;
+	private ObjectsManager om;
+	private SynchronizedTrackers trackers;
 	private Text text1, text2, text3, text4, text5;
 	private TranslateTransition translateMenu;
 	private List<Screen> screens;
@@ -81,6 +87,9 @@ public class MainMenuController implements Initializable {
 	private double screenWidth, screenHeight, canvasWidth, canvasHeight, startGameTimer, xOffset, yOffset;
 	private int colonyIndex, bugzRed, bugzGreen, bugzBlue, enemyRed, enemyGreen, enemyBlue, bgRed, bgGreen, bgBlue, resolutionWidth, resolutionHeight;
 	private boolean startGame, translatingMenu;
+	
+	// Game data object
+	private GameData gameData;
 	
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
@@ -98,6 +107,7 @@ public class MainMenuController implements Initializable {
 		setButtonGraphics();
 		bugz();
 		createMenuColony();
+		createManagers();
 		lastFrameTime = System.nanoTime();
 		animateMenu();
 		prepareCanvases();
@@ -118,17 +128,22 @@ public class MainMenuController implements Initializable {
     }
     
     public void startGameAnimation(MouseEvent m) {
-    	List<Worker> bugz = bm.getWorkers();
+    	List<List<? extends Bug>> bugz = bm.getBugz();
     	for(int i = 0; i < bugz.size(); i++) {
-    		bugz.get(i).setEnergy(-500);
-    		bugz.get(i).setSpeed(200);
-    		bugz.get(i).setForce(2);
-    		bugz.get(i).setFocus(0.5);
+    		List<? extends Bug> bugGroup = bugz.get(i);
+    		for(int j = 0; j < bugGroup.size(); j++) {
+    			bugGroup.get(j).setEnergy(-500);
+    			bugGroup.get(j).setSpeed(200);
+    		}
     	}
-    	List<Enemy> enemies = em.getEnemies();
+    	List<List<? extends Enemy>> enemies = em.getEnemies();
     	for(int i = 0; i < enemies.size(); i++) {
-    		enemies.get(i).setDead();
+    		List<? extends Enemy> enemyGroup = enemies.get(i);
+    		for(int j = 0; j < enemyGroup.size(); j++) {
+    			enemyGroup.get(j).setDead();
+    		}
     	}
+    	bm.clearBugzToRelease();
     	startGame = true;
     	TranslateTransition translateTitle = new TranslateTransition();
     	translateTitle.setNode(title);
@@ -155,27 +170,37 @@ public class MainMenuController implements Initializable {
     }
 	
 	public void createMenuColony() {
-		menuColony = new Colony(canvasWidth, canvasHeight, 60);
+		int menuBugzCount = 100;
+		menuColony = new MenuColony(canvasWidth, canvasHeight, 60);
 		bm = menuColony.getBm();
-		cm = menuColony.getCm();
-		em = menuColony.getEm();
-		bm.setBugRed(bugzRed);
-		bm.setBugGreen(bugzGreen);
-		bm.setBugBlue(bugzBlue);
-		bm.setBugAlpha(0.9);
-		em.setEnemyRed(enemyRed);
-		em.setEnemyGreen(enemyGreen);
-		em.setEnemyBlue(enemyBlue);
-		em.setEnemyAlpha(1.0);
-		em.setEnemySpeed(50);
-		em.setEnemySize(3);
-		em.setEnemyFocus(0.1);
-		em.setEnemyForce(2);
+		trackers = menuColony.getTrackers();
+		om = new ObjectsManager(canvasWidth, canvasHeight);
+		bm.setFood(om.getFood());
+		bm.setQueens(1);
+		bm.setExits(1);
+		menuColony.setupColony(menuBugzCount,0,0,0);
+	}
+	
+	public void createManagers() {
+		em = new EnemyManager(menuColony.getX(), menuColony.getY(), menuColony.getRadius(), canvasWidth, canvasHeight);
+		em.setDefenders(menuColony.getBm().getDefenders());
+		em.createMenuEnemies();
+		em.setTrackers(trackers);
+		cm = new CanvasManager();
+		cm.setupCM(menuColony.getX(), menuColony.getY(), menuColony.getRadius(), bm.getBugz(), em.getEnemies(), om.getFood(), trackers, 
+				bm.getPM().getHPheromone(), bm.getPM().getFPheromone(), bm.getPM().getCellWidth(), bm.getPM().getCellHeight(), bm.getPM().getXCells(), bm.getPM().getYCells());
 		cm.setBgRed(bgRed);
 		cm.setBgGreen(bgGreen);
 		cm.setBgBlue(bgBlue);
 		cm.setBgAlpha(1.0);
-		menuColony.setupMenuColony();
+		cm.setBugRed(bugzRed);
+		cm.setBugGreen(bugzGreen);
+		cm.setBugBlue(bugzBlue);
+		cm.setBugAlpha(0.9);
+		cm.setEnemyRed(enemyRed);
+		cm.setEnemyGreen(enemyGreen);
+		cm.setEnemyBlue(enemyBlue);
+		cm.setEnemyAlpha(1.0);
 	}
 	
 	public void animateMenu() {
@@ -193,15 +218,19 @@ public class MainMenuController implements Initializable {
 		menuBugCanvas.setVisible(true);
 		cm.generateGracphicsContexts(menuBackgroundCanvas, menuBugCanvas);
 		cm.drawBackground();
-		cm.draw();
+		cm.menuDraw();
 	}
 	
 	public void menuUpdate(long now) {
 		double latency = (now - lastFrameTime) / 1_000_000_000.0;
 		menuColony.menuUpdate(latency);
+		em.menuUpdate(latency);
+		cm.menuDraw();
+		// If game has been started, keep checking to see if all the bugz have returned home or 6 seconds have passed
+		// When one of those requirements are met, fade the light of the menu colony and slide the menu over
 		if(startGame) {
 			startGameTimer += latency;
-			if(menuColony.getTrackers().getBugzInHome() == bm.getWorkers().size() || startGameTimer >= 6.0) {
+			if(menuColony.getTrackers().getBugzInHome() == bm.getMenuBugz().size() || startGameTimer >= 6.0) {
 				cm.extinguishLight();
 				if(cm.getFadeLightStatus() && !translatingMenu) {
 					translateMenu.play();
@@ -456,14 +485,11 @@ public class MainMenuController implements Initializable {
 	}
 	
 	public void createListeners() {
-		CanvasManager cm = menuColony.getCm();
-		BugManager bm = menuColony.getBm();
-		EnemyManager em = menuColony.getEm();
 		bugzRedSlider.valueProperty().addListener(new ChangeListener<Number>() {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				bugzRed = (int)bugzRedSlider.getValue();
-				bm.setBugRed(bugzRed);
+				cm.setBugRed(bugzRed);
 				GamePreferences.setBugRed(bugzRed);
 				bugzRedValue.setText("" + bugzRed);
 			}
@@ -473,7 +499,7 @@ public class MainMenuController implements Initializable {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				bugzGreen = (int)bugzGreenSlider.getValue();
-				bm.setBugGreen(bugzGreen);
+				cm.setBugGreen(bugzGreen);
 				GamePreferences.setBugGreen(bugzGreen);
 				bugzGreenValue.setText("" + bugzGreen);
 			}
@@ -483,7 +509,7 @@ public class MainMenuController implements Initializable {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				bugzBlue = (int)bugzBlueSlider.getValue();
-				bm.setBugBlue(bugzBlue);
+				cm.setBugBlue(bugzBlue);
 				GamePreferences.setBugBlue(bugzBlue);
 				bugzBlueValue.setText("" + bugzBlue);
 			}
@@ -493,7 +519,7 @@ public class MainMenuController implements Initializable {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				enemyRed = (int)enemyRedSlider.getValue();
-				em.setEnemyRed(enemyRed);
+				cm.setEnemyRed(enemyRed);
 				GamePreferences.setEnemyRed(enemyRed);
 				enemyRedValue.setText("" + enemyRed);
 			}
@@ -503,7 +529,7 @@ public class MainMenuController implements Initializable {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				enemyGreen = (int)enemyGreenSlider.getValue();
-				em.setEnemyGreen(enemyGreen);
+				cm.setEnemyGreen(enemyGreen);
 				GamePreferences.setEnemyGreen(enemyGreen);
 				enemyGreenValue.setText("" + enemyGreen);
 			}
@@ -513,7 +539,7 @@ public class MainMenuController implements Initializable {
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				enemyBlue = (int)enemyBlueSlider.getValue();
-				em.setEnemyBlue(enemyBlue);
+				cm.setEnemyBlue(enemyBlue);
 				GamePreferences.setEnemyBlue(enemyBlue);
 				enemyBlueValue.setText("" + enemyBlue);
 			}
@@ -672,6 +698,10 @@ public class MainMenuController implements Initializable {
 		enemyBlue = GamePreferences.getEnemyBlue();
 	}
 	
+	public void populateStats() {
+		
+	}
+	
 	public void setUISizes() {
 		Screen screen = Screen.getPrimary();
 		Rectangle2D screenBounds = screen.getBounds();
@@ -723,6 +753,7 @@ public class MainMenuController implements Initializable {
 	}
 	
 	public void setupStage(Stage stage) {
+		// Makes a listener that will stop/start the menu animation when the program gets minimized and attaches it to the stage to listen for minimizing
 		minimizeListener = (observable, oldValue, newValue) -> {
 			if(newValue) {
 				menuAnimationTimer.stop();
@@ -733,6 +764,11 @@ public class MainMenuController implements Initializable {
 			}
 		};
 		stage.iconifiedProperty().addListener(minimizeListener);
+	}
+	
+	public void setupGameData(GameData data) {
+		gameData = data;
+		populateStats();
 	}
 
 	public double getWindowWidth() {

@@ -1,30 +1,34 @@
-package application;
+package application.bugz;
 
 import java.util.List;
 
+import application.SynchronizedTrackers;
+import application.enemy.Enemy;
 import javafx.geometry.Point2D;
 
-public class Scout extends Bug {
+public class Guard extends Bug {
 	
-	private final int HEALTH = 50;				// Determines how much health this bug has
-	private final int DAMAGE = 15;				// Determines how much damage this bug does
+	private final int HEALTH = 500;				// Determines how much health this bug has
+	private final int DAMAGE = 5;				// Determines how much damage this bug does
 	private final int ATTACK_STAGES = 3;		// Determines how many stages the attack has (for animation purposes)
 	private final double STAGE_DURATION = 0.2;	// Determines how long inbetween each attack stage (attack speed)
 	private final int MAX_ENERGY = 70;			// Determines how long a bug stays out of its home
 	private final int PERIMETER = 400;			// Determines how far away the bug can detect enemies
-	private final int ATTACK_PERIMETER = 200;	// Determines how far away the bug can attack enemies
-	private final double SPEED_MODIFIER = 1.3;	// Determines how much faster the scout moves than workers
-	private final double SIZE_MODIFIER = 11.0;	// Determines how much larger the scout is than a worker
+	private final int ATTACK_PERIMETER = 50;	// Determines how far away the bug can attack enemies
+	private final double SPEED = 40;			// Determines the speed of the bug
+	private final double SIZE =  8.0;			// Determines the size of the bug
 	private final int EXPERIENCE_ON_DEATH = 5;	// Determines how much experience is given to the enemy that kills this bug
 	private final int EXPERIENCE_TO_LEVEL = 50;	// Determines how much experience is needed to gain a level
 	
 	private double maxSpeed, size, attackProgress;
 	private boolean sensedEnemy;
-
-	public Scout(double boundX, double boundY, List<Food> food, List<Enemy> enemies, double homeX, double homeY, double homeRadius, SynchronizedTrackers trackers) {
-		super(boundX, boundY, food, enemies, homeX, homeY, homeRadius, trackers);
+	
+	public Guard(double boundX, double boundY, List<List<? extends Enemy>> enemies, double homeX, double homeY, double homeRadius, SynchronizedTrackers trackers) {
+		super(boundX, boundY, homeX, homeY, homeRadius, trackers);
 		setHealth(HEALTH);
 		setAttackStage(ATTACK_STAGES); // set stage so that enemy will attack very shortly after reaching attack range
+		setSize(SIZE);
+		setSpeed(SPEED);
 	}
 
 	@Override
@@ -35,7 +39,7 @@ public class Scout extends Bug {
 			createDirection();
 		}
 		else if(senseEnemy()) {
-			// target is set in the senseEnemy() call to get into this if block
+			// set target to enemy	
 			createDirection();
 		}
 		else {
@@ -50,28 +54,31 @@ public class Scout extends Bug {
 	}
 	
 	public boolean senseEnemy() {
-		List<Enemy> enemies = getEnemies();
-		double shortestDistance = 0;
+		double shortestDistance = PERIMETER;
+		List<List<? extends Enemy>> enemies = getEnemies();
 		for(int i = 0; i < enemies.size(); i++) {
-			Enemy enemy = enemies.get(i);
-			if(enemy.isPickedUp() || enemy.getX() < 0 || enemy.getX() > getBoundsX() || enemy.getY() < 0 || enemy.getY() > getBoundsY() || enemy.isDead() || enemy.isThrown()) {
-				continue;
-			}
-			double test = new Point2D(getX(), getY()).distance(enemy.getX(), enemy.getY());
-			if(test <= PERIMETER) {
-				if(getTargetEnemy() == null) {
-					setTargetX(enemy.getX());
-					setTargetY(enemy.getY());
-					setTargetEnemy(enemy);
-					shortestDistance = test;
-					sensedEnemy = true;
+			List<? extends Enemy> enemyGroup = enemies.get(i);
+			for(int j = 0; j < enemyGroup.size(); j++) {
+				Enemy enemy = enemyGroup.get(j);
+				if(enemy.isPickedUp() || enemy.getX() < 0 || enemy.getX() > getBoundsX() || enemy.getY() < 0 || enemy.getY() > getBoundsY() || enemy.isDead() || enemy.isThrown()) {
+					continue;
 				}
-				else {
-					if(test < shortestDistance) {
+				double test = new Point2D(getX(), getY()).distance(enemy.getX(), enemy.getY());
+				if(test <= PERIMETER) {
+					if(getTargetEnemy() == null) {
 						setTargetX(enemy.getX());
 						setTargetY(enemy.getY());
 						setTargetEnemy(enemy);
 						shortestDistance = test;
+						sensedEnemy = true;
+					}
+					else {
+						if(test < shortestDistance) {
+							setTargetX(enemy.getX());
+							setTargetY(enemy.getY());
+							setTargetEnemy(enemy);
+							shortestDistance = test;
+						}
 					}
 				}
 			}
@@ -96,12 +103,6 @@ public class Scout extends Bug {
 	
 	@Override
 	public void attack() {
-		Enemy enemy = getTargetEnemy();
-		double test = new Point2D(getX(), getY()).distance(enemy.getX(), enemy.getY());
-		if(enemy.isDead() || test > ATTACK_PERIMETER) {
-			setAttacking(false);
-			return;
-		}
 		attackProgress += getLatency();
 		// increment the attack stages so animations can be created for each stage of the attack
 		if(attackProgress >= STAGE_DURATION) {
@@ -123,7 +124,7 @@ public class Scout extends Bug {
 
 	@Override
 	public void setSpeed(double speed) {
-		maxSpeed = speed * SPEED_MODIFIER;
+		maxSpeed = speed;
 	}
 
 	@Override
@@ -133,7 +134,7 @@ public class Scout extends Bug {
 
 	@Override
 	public void setSize(double size) {
-		this.size = size * SIZE_MODIFIER;
+		this.size = size;
 		if(getLevel() > 1) {
 			increaseSize();
 		}
@@ -154,17 +155,17 @@ public class Scout extends Bug {
 	public int getMaxEnergy() {
 		return MAX_ENERGY;
 	}
-
+	
 	@Override
 	public void resetHealth() {
 		setHealth(HEALTH);
 	}
-
+	
 	@Override
 	public int getMaxHealth() {
 		return HEALTH;
 	}
-
+	
 	@Override
 	public int getMaxAttackStages() {
 		return ATTACK_STAGES;
@@ -174,7 +175,7 @@ public class Scout extends Bug {
 	public int getExperienceOnDeath() {
 		return EXPERIENCE_ON_DEATH;
 	}
-	
+
 	@Override
 	public int getExperienceToLevel() {
 		return EXPERIENCE_TO_LEVEL;

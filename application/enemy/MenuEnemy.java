@@ -1,11 +1,13 @@
-package application;
+package application.enemy;
 
 import java.util.Random;
 
+import application.SynchronizedTrackers;
+
 public class MenuEnemy extends Enemy {
 	
-	private final double SPEED_MODIFIER = 0.8;	// Determines how much fast this enemy moves than workers
-	private final double SIZE_MODIFIER = 12.0;	// Determines how much larger the enemy is than a worker
+	private final double SPEED = 40;	// Determines how much fast this enemy moves than workers
+	private final double SIZE = 25.0;	// Determines how much larger the enemy is than a worker
 	
 	private Random rand;
 	private double maxSpeed, size, boundsX, boundsY;
@@ -17,6 +19,8 @@ public class MenuEnemy extends Enemy {
 		this.boundsX = boundsX;
 		this.boundsY = boundsY;
 		rand = new Random();
+		setSize(SIZE);
+		setSpeed(SPEED);
 	}
 
 	@Override
@@ -74,7 +78,7 @@ public class MenuEnemy extends Enemy {
 
 	@Override
 	public void setSpeed(double speed) {
-		maxSpeed = speed * SPEED_MODIFIER;
+		maxSpeed = speed;
 	}
 
 	@Override
@@ -84,16 +88,16 @@ public class MenuEnemy extends Enemy {
 
 	@Override
 	public void setSize(double size) {
-		this.size = size * SIZE_MODIFIER;
+		this.size = size;
 		if(getLevel() > 1) {
 			increaseSize();
 		}
 	}
-
+	
 	@Override
 	public void increaseSize() {
-		// TODO Auto-generated method stub
-		
+		double sizeIncrease = (getLevel() * 0.1) + 1;
+		size *= sizeIncrease;
 	}
 
 	@Override
